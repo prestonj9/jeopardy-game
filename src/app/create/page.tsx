@@ -1,0 +1,168 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Mode = "topic" | "upload";
+
+export default function CreatePage() {
+  const router = useRouter();
+  const [mode, setMode] = useState("topic" as Mode);
+  const [topic, setTopic] = useState("");
+  const [uploadedContent, setUploadedContent] = useState(null as string | null);
+  const [fileName, setFileName] = useState(null as string | null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null as string | null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+
+  async function handleFileUpload(file: File) {
+    setUploadLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setUploadedContent(data.content);
+      setFileName(file.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadLoading(false);
+    }
+  }
+
+  async function handleGenerate() {
+    setLoading(true);
+    setError(null);
+    try {
+      const body =
+        mode === "topic"
+          ? { mode: "topic" as const, topic }
+          : { mode: "upload" as const, content: uploadedContent || "" };
+
+      const boardRes = await fetch("/api/generate-board", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const boardData = await boardRes.json();
+      if (!boardRes.ok) throw new Error(boardData.error || "Generation failed");
+
+      const gameRes = await fetch("/api/game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          board: boardData.board,
+          finalJeopardy: boardData.finalJeopardy,
+        }),
+      });
+      const gameData = await gameRes.json();
+      if (!gameRes.ok) throw new Error(gameData.error || "Game creation failed");
+
+      router.push("/host/" + gameData.gameId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const canGenerate = !loading && (mode === "topic" ? topic.trim() !== "" : uploadedContent !== null);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-white text-xl">Generating with AI...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-jeopardy-category rounded-xl p-8 shadow-2xl">
+        <h1 className="text-3xl font-bold text-jeopardy-gold text-center mb-8">
+          Create a Game
+        </h1>
+
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setMode("topic")}
+            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "topic" ? "bg-jeopardy-gold text-jeopardy-category" : "bg-jeopardy-blue/50 text-white")}
+          >
+            Enter a Topic
+          </button>
+          <button
+            onClick={() => setMode("upload")}
+            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "upload" ? "bg-jeopardy-gold text-jeopardy-category" : "bg-jeopardy-blue/50 text-white")}
+          >
+            Upload a File
+          </button>
+        </div>
+
+        {mode === "topic" && (
+          <div className="mb-6">
+            <label className="block text-white text-sm font-medium mb-2">
+              What should the game be about?
+            </label>
+            <input
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. Harry Potter, US History, Science"
+              maxLength={500}
+              className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-lg focus:outline-none focus:ring-2 focus:ring-jeopardy-gold"
+            />
+            <p className="text-white/40 text-sm mt-1">
+              {topic.length}/500 characters
+            </p>
+          </div>
+        )}
+
+        {mode === "upload" && (
+          <div className="mb-6">
+            <label className="block text-white text-sm font-medium mb-2">
+              Upload source material (.pdf or .txt)
+            </label>
+            <label className="w-full border-2 border-dashed border-white/30 rounded-lg p-8 text-center cursor-pointer hover:border-jeopardy-gold/50 transition-colors block">
+              {uploadLoading ? (
+                <span className="text-white">Extracting text...</span>
+              ) : fileName ? (
+                <span className="text-jeopardy-gold font-bold">{fileName}</span>
+              ) : (
+                <span className="text-white/60">Click to upload (PDF or TXT, max 10MB)</span>
+              )}
+              <input
+                type="file"
+                accept=".pdf,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              />
+            </label>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        <button
+          onClick={handleGenerate}
+          disabled={!canGenerate}
+          className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-jeopardy-gold text-jeopardy-category hover:brightness-110"
+        >
+          Generate Game
+        </button>
+      </div>
+    </div>
+  );
+}

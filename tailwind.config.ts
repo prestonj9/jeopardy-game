@@ -11,6 +11,10 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        "jeopardy-blue": "#060CE9",
+        "jeopardy-category": "#03008D",
+        "jeopardy-gold": "#FFD700",
+        "jeopardy-buzz": "#FF4500",
       },
     },
   },

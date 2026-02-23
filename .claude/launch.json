@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "jeopardy-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--experimental-transform-types", "server.ts"],
+      "port": 3000
+    }
+  ]
+}
