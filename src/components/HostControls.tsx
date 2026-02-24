@@ -18,7 +18,7 @@ export default function HostControls({
       {allCluesRevealed && (
         <button
           onClick={onStartFinal}
-          className="px-8 py-3 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-lg rounded-lg hover:opacity-90 active:scale-95 transition-all animate-pulse"
+          className="px-8 py-3 bg-text-primary text-white font-bold text-lg rounded-full hover:opacity-90 active:scale-95 transition-all animate-pulse"
         >
           Start Final Jeopardy
         </button>

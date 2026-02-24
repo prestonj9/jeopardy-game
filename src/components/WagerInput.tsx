@@ -40,7 +40,7 @@ export default function WagerInput({
             const val = parseInt(e.target.value) || 0;
             setAmount(Math.max(minWager, Math.min(val, effectiveMax)));
           }}
-          className="w-full px-4 py-3 text-2xl font-bold text-center bg-white border border-border rounded-lg text-accent focus:outline-none focus:ring-2 focus:ring-accent"
+          className="w-full px-4 py-3 text-2xl font-bold text-center bg-white/50 border border-white/60 rounded-full text-accent focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>
 
@@ -50,14 +50,14 @@ export default function WagerInput({
           <button
             key={preset}
             onClick={() => setAmount(Math.min(preset, effectiveMax))}
-            className="flex-1 py-2 bg-white text-text-primary rounded-lg hover:bg-surface-hover border border-border transition-colors text-sm font-medium"
+            className="flex-1 py-2 bg-white/50 text-text-primary rounded-full hover:bg-white/70 border border-white/60 transition-colors text-sm font-medium"
           >
             ${preset}
           </button>
         ))}
         <button
           onClick={() => setAmount(effectiveMax)}
-          className="flex-1 py-2 bg-danger/10 text-danger rounded-lg hover:bg-danger/20 border border-danger/30 transition-colors text-sm font-bold"
+          className="flex-1 py-2 bg-danger/10 text-danger rounded-full hover:bg-danger/20 border border-danger/30 transition-colors text-sm font-bold"
         >
           ALL IN
         </button>
@@ -65,7 +65,7 @@ export default function WagerInput({
 
       <button
         onClick={() => onSubmit(amount)}
-        className="w-full py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-lg hover:opacity-90 active:scale-95 transition-all"
+        className="w-full py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90 active:scale-95 transition-all"
       >
         Submit Wager
       </button>

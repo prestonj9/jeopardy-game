@@ -66,7 +66,6 @@ export default function CreatePage() {
       router.push("/host/" + gameData.gameId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
       setLoading(false);
     }
   }
@@ -102,22 +101,23 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-surface rounded-2xl p-8 shadow-sm border border-border">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
+      <InteractiveHero />
+      <div className="w-full max-w-lg bg-white/25 backdrop-blur-lg rounded-2xl p-8 shadow-lg border border-white/60 relative z-10">
         <h1 className="text-3xl font-bold text-text-primary text-center mb-8">
           Create a Game
         </h1>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex bg-white/50 border border-white/60 rounded-full p-1 mb-6">
           <button
             onClick={() => setMode("topic")}
-            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "topic" ? "bg-gradient-to-r from-accent to-accent-cyan text-white" : "bg-white text-text-secondary border border-border")}
+            className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (mode === "topic" ? "bg-text-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
           >
             Enter a Topic
           </button>
           <button
             onClick={() => setMode("upload")}
-            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "upload" ? "bg-gradient-to-r from-accent to-accent-cyan text-white" : "bg-white text-text-secondary border border-border")}
+            className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (mode === "upload" ? "bg-text-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
           >
             Upload a File
           </button>
@@ -134,7 +134,7 @@ export default function CreatePage() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Harry Potter, US History, Science"
               maxLength={500}
-              className="w-full px-4 py-3 rounded-lg bg-white border border-border text-text-primary placeholder-text-tertiary text-lg focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full px-5 py-3 rounded-full bg-white/50 border border-white/60 text-text-primary placeholder-text-tertiary text-lg focus:outline-none focus:ring-2 focus:ring-accent"
             />
             <p className="text-text-tertiary text-sm mt-1">
               {topic.length}/500 characters
@@ -177,7 +177,7 @@ export default function CreatePage() {
         <button
           onClick={handleGenerate}
           disabled={!canGenerate}
-          className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-accent to-accent-cyan text-white hover:opacity-90"
+          className="w-full py-4 rounded-full font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-text-primary text-white hover:opacity-90"
         >
           Generate Game
         </button>

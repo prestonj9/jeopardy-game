@@ -65,7 +65,7 @@ export default function FinalJeopardy({
           {isHost && (
             <button
               onClick={onAdvance}
-              className="mt-8 px-8 py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-lg hover:opacity-90"
+              className="mt-8 px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
             >
               Begin Wagering
             </button>
@@ -101,7 +101,7 @@ export default function FinalJeopardy({
               </div>
               <button
                 onClick={onAdvance}
-                className="px-8 py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-lg hover:opacity-90"
+                className="px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
               >
                 Show Clue
               </button>
@@ -165,7 +165,7 @@ export default function FinalJeopardy({
               </div>
               <button
                 onClick={onAdvance}
-                className="px-8 py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-lg hover:opacity-90"
+                className="px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
               >
                 Begin Judging
               </button>
@@ -177,7 +177,7 @@ export default function FinalJeopardy({
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 placeholder="What is..."
-                className="w-full px-4 py-3 text-xl bg-white border border-border rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent mb-4"
+                className="w-full px-5 py-3 text-xl bg-white/50 border border-white/60 rounded-full text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent mb-4"
               />
               <button
                 onClick={() => {
@@ -185,7 +185,7 @@ export default function FinalJeopardy({
                   setSubmittedAnswer(true);
                 }}
                 disabled={!answer.trim()}
-                className="w-full py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-lg hover:opacity-90 disabled:opacity-40"
+                className="w-full py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90 disabled:opacity-40"
               >
                 Submit Answer
               </button>
@@ -243,7 +243,7 @@ export default function FinalJeopardy({
                           onJudge?.(player.id, true);
                           setJudgedPlayers((prev) => { const next = new Set(Array.from(prev)); next.add(player.id); return next; });
                         }}
-                        className="flex-1 py-3 bg-success text-white font-bold rounded-lg hover:opacity-90"
+                        className="flex-1 py-3 bg-success text-white font-bold rounded-full hover:opacity-90"
                       >
                         CORRECT
                       </button>
@@ -252,7 +252,7 @@ export default function FinalJeopardy({
                           onJudge?.(player.id, false);
                           setJudgedPlayers((prev) => { const next = new Set(Array.from(prev)); next.add(player.id); return next; });
                         }}
-                        className="flex-1 py-3 bg-danger text-white font-bold rounded-lg hover:opacity-90"
+                        className="flex-1 py-3 bg-danger text-white font-bold rounded-full hover:opacity-90"
                       >
                         INCORRECT
                       </button>
@@ -265,7 +265,7 @@ export default function FinalJeopardy({
           {judgedPlayers.size === players.length && (
             <button
               onClick={onAdvance}
-              className="mt-6 px-8 py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-lg hover:opacity-90"
+              className="mt-6 px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
             >
               Show Final Results
             </button>
@@ -285,7 +285,7 @@ export default function FinalJeopardy({
               .map((player, i) => (
                 <div
                   key={player.id}
-                  className={`flex justify-between items-center px-6 py-4 rounded-xl ${
+                  className={`flex justify-between items-center px-6 py-4 rounded-full ${
                     i === 0
                       ? "bg-accent/10 ring-2 ring-accent"
                       : "bg-surface border border-border"

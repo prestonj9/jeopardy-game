@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import InteractiveHero from "@/components/InteractiveHero";
 
 function JoinForm() {
   const router = useRouter();
@@ -35,7 +36,7 @@ function JoinForm() {
   }
 
   return (
-    <div className="w-full max-w-sm bg-surface rounded-2xl p-8 shadow-sm border border-border">
+    <div className="w-full max-w-sm bg-white/25 backdrop-blur-lg rounded-2xl p-8 shadow-lg border border-white/60 relative z-10">
       <h1 className="text-3xl font-bold text-text-primary text-center mb-8">
         Join Game
       </h1>
@@ -52,7 +53,7 @@ function JoinForm() {
               setGameCode(e.target.value.toUpperCase().slice(0, 6))
             }
             placeholder="Enter code"
-            className="w-full px-4 py-3 text-2xl text-center font-bold tracking-[0.2em] rounded-lg bg-white border border-border text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent uppercase"
+            className="w-full px-4 py-3 text-2xl text-center font-bold tracking-[0.2em] rounded-full bg-white/50 border border-white/60 text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent uppercase"
             maxLength={6}
             autoFocus
           />
@@ -67,20 +68,20 @@ function JoinForm() {
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value.slice(0, 20))}
             placeholder="Enter your name"
-            className="w-full px-4 py-3 text-lg rounded-lg bg-white border border-border text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full px-5 py-3 text-lg rounded-full bg-white/50 border border-white/60 text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent"
             maxLength={20}
           />
         </div>
 
         {error && (
-          <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm">
+          <div className="p-3 bg-danger/10 border border-danger/30 rounded-full text-danger text-sm px-5">
             {error}
           </div>
         )}
 
         <button
           type="submit"
-          className="w-full py-4 rounded-lg font-bold text-xl bg-gradient-to-r from-accent to-accent-cyan text-white hover:opacity-90 active:scale-[0.98] transition-all"
+          className="w-full py-4 rounded-full font-bold text-xl bg-text-primary text-white hover:opacity-90 active:scale-[0.98] transition-all"
         >
           Join
         </button>
@@ -91,10 +92,11 @@ function JoinForm() {
 
 export default function JoinPage() {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
+      <InteractiveHero />
       <Suspense
         fallback={
-          <div className="w-full max-w-sm bg-surface rounded-2xl p-8 shadow-sm border border-border text-center">
+          <div className="w-full max-w-sm bg-white/25 backdrop-blur-lg rounded-2xl p-8 shadow-lg border border-white/60 text-center relative z-10">
             <p className="text-text-secondary text-lg">Loading...</p>
           </div>
         }

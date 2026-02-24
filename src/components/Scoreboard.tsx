@@ -11,15 +11,15 @@ export default function Scoreboard({ players, activePlayerId }: ScoreboardProps)
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
   return (
-    <div className="w-full bg-surface rounded-2xl p-4 border border-border">
+    <div className="w-full bg-surface/80 backdrop-blur-sm rounded-2xl p-4 border border-border">
       <div className="flex flex-wrap gap-4 justify-center">
         {sorted.map((player) => (
           <div
             key={player.id}
-            className={`flex flex-col items-center px-6 py-3 rounded-xl min-w-[120px] transition-all ${
+            className={`flex flex-col items-center px-6 py-3 rounded-full min-w-[120px] transition-all ${
               player.id === activePlayerId
                 ? "bg-accent/10 ring-2 ring-accent"
-                : "bg-white border border-border"
+                : "bg-white/50 border border-white/60"
             } ${!player.isConnected ? "opacity-40" : ""}`}
           >
             <span className="text-text-primary font-medium text-sm truncate max-w-[120px]">

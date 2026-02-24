@@ -35,7 +35,7 @@ function createParticles(width: number, height: number, count: number): Particle
     vx: (Math.random() - 0.5) * 0.15,
     vy: (Math.random() - 0.5) * 0.15,
     radius: Math.random() * 1.5 + 0.5,
-    opacity: Math.random() * 0.25 + 0.15,
+    opacity: Math.random() * 0.3 + 0.25,
     phaseX: Math.random() * Math.PI * 2,
     phaseY: Math.random() * Math.PI * 2,
     freqX: Math.random() * 0.003 + 0.001,
@@ -99,7 +99,7 @@ export default function InteractiveHero() {
     resize();
     window.addEventListener("resize", resize);
 
-    const CONNECTION_DIST = 120;
+    const CONNECTION_DIST = 160;
     const MOUSE_REPEL_DIST = 100;
     const MOUSE_REPEL_FORCE = 0.8;
 
@@ -176,12 +176,12 @@ export default function InteractiveHero() {
             const dy = a.y - b.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < CONNECTION_DIST) {
-              const alpha = (1 - dist / CONNECTION_DIST) * 0.12;
+              const alpha = (1 - dist / CONNECTION_DIST) * 0.28;
               ctx.beginPath();
               ctx.moveTo(a.x, a.y);
               ctx.lineTo(b.x, b.y);
               ctx.strokeStyle = `rgba(0, 140, 255, ${alpha})`;
-              ctx.lineWidth = 0.5;
+              ctx.lineWidth = 0.8;
               ctx.stroke();
             }
           }

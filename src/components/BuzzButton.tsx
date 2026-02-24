@@ -47,7 +47,7 @@ export default function BuzzButton({ state, onBuzz, countdown }: BuzzButtonProps
     <button
       onClick={state === "active" ? onBuzz : undefined}
       disabled={state !== "active"}
-      className={`w-full min-h-[80px] rounded-2xl font-bold text-3xl transition-all active:scale-95 select-none ${c.bg} ${c.textColor} ${c.cursor} ${c.animate}`}
+      className={`w-full min-h-[80px] rounded-full font-bold text-3xl transition-all active:scale-95 select-none ${c.bg} ${c.textColor} ${c.cursor} ${c.animate}`}
       style={{ touchAction: "manipulation" }}
     >
       {c.text}

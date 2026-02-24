@@ -20,13 +20,13 @@ export default function Home() {
       <div className="relative z-10 flex flex-col sm:flex-row gap-4 w-full max-w-md">
         <Link
           href="/create"
-          className="flex-1 py-5 rounded-xl font-bold text-xl text-center bg-gradient-to-r from-accent to-accent-cyan text-white hover:opacity-90 active:scale-[0.98] transition-all shadow-lg"
+          className="flex-1 py-5 rounded-full font-bold text-xl text-center bg-text-primary text-white hover:opacity-90 active:scale-[0.98] transition-all shadow-lg"
         >
           Host a Game
         </Link>
         <Link
           href="/play"
-          className="flex-1 py-5 rounded-xl font-bold text-xl text-center bg-surface text-text-primary border border-border hover:bg-surface-hover active:scale-[0.98] transition-all"
+          className="flex-1 py-5 rounded-full font-bold text-xl text-center bg-white/50 backdrop-blur-lg text-text-primary border border-white/60 hover:bg-white/70 active:scale-[0.98] transition-all"
         >
           Join a Game
         </Link>

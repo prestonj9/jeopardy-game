@@ -18,7 +18,7 @@ export default function Lobby({
 }: LobbyProps) {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md bg-surface rounded-2xl p-8 shadow-sm border border-border text-center">
+      <div className="w-full max-w-md bg-surface/80 backdrop-blur-sm rounded-2xl p-8 shadow-sm border border-border text-center">
         {/* Game Code */}
         <p className="text-text-secondary text-sm uppercase tracking-wider mb-1">
           Game Code
@@ -43,7 +43,7 @@ export default function Lobby({
             {players.map((player) => (
               <div
                 key={player.id}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-white rounded-lg border border-border"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white/50 rounded-full border border-white/60"
               >
                 <div
                   className={`w-2 h-2 rounded-full ${
@@ -66,7 +66,7 @@ export default function Lobby({
           <button
             onClick={onStartGame}
             disabled={players.length === 0}
-            className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-accent to-accent-cyan text-white hover:opacity-90 active:scale-[0.98]"
+            className="w-full py-4 rounded-full font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-text-primary text-white hover:opacity-90 active:scale-[0.98]"
           >
             Start Game
           </button>
