@@ -26,7 +26,7 @@ export default function PlayerGamePage() {
   const [showDDWager, setShowDDWager] = useState(false);
   const [ddMaxWager, setDDMaxWager] = useState(1000);
 
-  // Join game
+  // Join game (first time only)
   useEffect(() => {
     if (!socket || !isConnected || playerId) return;
 
@@ -48,6 +48,31 @@ export default function PlayerGamePage() {
       }
     );
   }, [socket, isConnected, gameId, playerName, playerId]);
+
+  // Reconnect after phone sleep / network drop
+  useEffect(() => {
+    if (!socket || !playerId) return;
+
+    const handleReconnect = () => {
+      console.log("[player] socket reconnected, re-joining game:", gameId);
+      socket.emit(
+        "player:join",
+        { gameId, playerName },
+        (result) => {
+          if (result.success) {
+            console.log("[player] reconnect successful");
+          } else {
+            console.error("[player] reconnect failed:", result.error);
+          }
+        }
+      );
+    };
+
+    socket.io.on("reconnect", handleReconnect);
+    return () => {
+      socket.io.off("reconnect", handleReconnect);
+    };
+  }, [socket, playerId, gameId, playerName]);
 
   // Listen for clue events
   useEffect(() => {
