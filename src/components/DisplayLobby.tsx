@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SerializablePlayer } from "@/lib/types";
 import QRCodeDisplay from "./QRCode";
 import { QRCodeSVG } from "qrcode.react";
+import ShareableLink from "./ShareableLink";
 
 interface DisplayLobbyProps {
   gameId: string;
@@ -91,8 +92,12 @@ export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
               Scan with your phone to control the game
             </p>
 
-            <div className="bg-white p-4 rounded-lg inline-block mb-6 border border-border">
+            <div className="bg-white p-4 rounded-lg inline-block mb-4 border border-border">
               <QRCodeSVG value={remoteUrl} size={200} />
+            </div>
+
+            <div className="mb-6">
+              <ShareableLink url={remoteUrl} />
             </div>
 
             <button

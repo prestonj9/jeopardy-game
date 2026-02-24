@@ -1,6 +1,7 @@
 "use client";
 
 import { QRCodeSVG } from "qrcode.react";
+import ShareableLink from "./ShareableLink";
 
 interface QRCodeDisplayProps {
   gameId: string;
@@ -19,10 +20,11 @@ export default function QRCodeDisplay({ gameId }: QRCodeDisplayProps) {
       <div className="bg-white p-3 rounded-lg border border-border">
         <QRCodeSVG value={url} size={180} />
       </div>
-      <p className="text-text-tertiary text-xs mt-2">
-        Scan to join or go to{" "}
-        <span className="text-text-secondary">/play</span>
-      </p>
+
+      {/* Shareable link with copy button */}
+      <div className="mt-3">
+        <ShareableLink url={url} />
+      </div>
     </div>
   );
 }
