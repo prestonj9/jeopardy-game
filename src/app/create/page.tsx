@@ -1,7 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
+const LOADING_MESSAGES = [
+  "Generating with AI...",
+  "Pretending to think really hard...",
+  "Googling the answers... just kidding",
+  "Making up facts with confidence...",
+  "Hallucinating responsibly...",
+  "Definitely not copying from Wikipedia...",
+  "Consulting my neural networks (they're arguing)",
+  "I swear I knew this before you asked...",
+  "Writing wrong answers and then fixing them...",
+  "Trying to spell 'Jeopardy' correctly...",
+  "Generating categories nobody asked for...",
+  "Hold on, my brain is buffering...",
+  "Crafting clues that are technically correct (the best kind)",
+  "Running on vibes and matrix multiplication...",
+  "What is... give me a second...",
+  "Doing 400 billion math problems for this...",
+  "Almost done (AI for 'I have no idea how long this takes')",
+  "Overthinking every single clue...",
+  "This is my audition for the real show",
+  "Fun fact: I don't actually know anything, I just predict words",
+];
 
 type Mode = "topic" | "upload";
 
@@ -71,12 +94,29 @@ export default function CreatePage() {
 
   const canGenerate = !loading && (mode === "topic" ? topic.trim() !== "" : uploadedContent !== null);
 
+  // Rotate loading messages
+  const [messageIndex, setMessageIndex] = useState(0);
+  useEffect(() => {
+    if (!loading) return;
+    // Pick a random starting point
+    setMessageIndex(Math.floor(Math.random() * LOADING_MESSAGES.length));
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [loading]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-white text-xl">Generating with AI...</p>
+        <div className="text-center max-w-md">
+          <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-6"></div>
+          <p
+            key={messageIndex}
+            className="text-white text-xl animate-[fadeIn_0.5s_ease-in] min-h-[3.5rem]"
+          >
+            {LOADING_MESSAGES[messageIndex]}
+          </p>
         </div>
       </div>
     );
