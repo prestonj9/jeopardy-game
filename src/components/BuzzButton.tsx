@@ -12,26 +12,30 @@ export default function BuzzButton({ state, onBuzz, countdown }: BuzzButtonProps
 
   const config = {
     disabled: {
-      bg: "bg-gray-600",
+      bg: "bg-surface",
       text: showCountdown ? String(countdown) : "WAIT",
+      textColor: "text-text-tertiary",
       cursor: "cursor-not-allowed",
       animate: showCountdown ? "text-6xl" : "",
     },
     active: {
-      bg: "bg-jeopardy-buzz",
+      bg: "bg-gradient-to-r from-accent to-accent-cyan",
       text: "BUZZ!",
+      textColor: "text-white",
       cursor: "cursor-pointer",
-      animate: "animate-pulse shadow-[0_0_30px_rgba(255,69,0,0.5)]",
+      animate: "animate-pulse shadow-glow-accent",
     },
     buzzed: {
-      bg: "bg-blue-600",
+      bg: "bg-accent",
       text: "BUZZED!",
+      textColor: "text-white",
       cursor: "cursor-not-allowed",
       animate: "",
     },
     locked_out: {
-      bg: "bg-gray-700",
+      bg: "bg-surface",
       text: "LOCKED OUT",
+      textColor: "text-text-tertiary",
       cursor: "cursor-not-allowed",
       animate: "",
     },
@@ -43,7 +47,7 @@ export default function BuzzButton({ state, onBuzz, countdown }: BuzzButtonProps
     <button
       onClick={state === "active" ? onBuzz : undefined}
       disabled={state !== "active"}
-      className={`w-full min-h-[80px] rounded-2xl font-bold text-3xl text-white transition-all active:scale-95 select-none ${c.bg} ${c.cursor} ${c.animate}`}
+      className={`w-full min-h-[80px] rounded-2xl font-bold text-3xl transition-all active:scale-95 select-none ${c.bg} ${c.textColor} ${c.cursor} ${c.animate}`}
       style={{ touchAction: "manipulation" }}
     >
       {c.text}

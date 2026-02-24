@@ -11,14 +11,14 @@ interface BoardProps {
 export default function Board({ board, onSelectClue, disabled }: BoardProps) {
   return (
     <div className="w-full max-w-6xl mx-auto">
-      <div className="grid grid-cols-6 gap-1 bg-black rounded-lg overflow-hidden">
+      <div className="grid grid-cols-6 gap-2 p-2">
         {/* Category Headers */}
         {board.categories.map((cat, ci) => (
           <div
             key={`cat-${ci}`}
-            className="bg-jeopardy-category p-3 flex items-center justify-center min-h-[80px]"
+            className="bg-surface rounded-xl p-3 flex items-center justify-center min-h-[80px] border border-border"
           >
-            <span className="text-white font-bold text-center text-sm md:text-base uppercase leading-tight">
+            <span className="text-text-primary font-bold text-center text-sm md:text-base uppercase leading-tight">
               {cat.name}
             </span>
           </div>
@@ -35,14 +35,14 @@ export default function Board({ board, onSelectClue, disabled }: BoardProps) {
                 key={`clue-${ci}-${clueIndex}`}
                 onClick={() => !isRevealed && !disabled && onSelectClue(ci, clueIndex)}
                 disabled={isRevealed || disabled}
-                className={`aspect-[4/3] flex items-center justify-center transition-all ${
+                className={`aspect-[4/3] flex items-center justify-center transition-all rounded-xl ${
                   isRevealed
-                    ? "bg-[#1a1a2e] cursor-default"
-                    : "bg-jeopardy-blue hover:brightness-125 cursor-pointer active:scale-95"
+                    ? "bg-white border border-border/50 opacity-40 cursor-default"
+                    : "bg-surface border border-border hover:bg-surface-hover cursor-pointer active:scale-95"
                 }`}
               >
                 {!isRevealed && (
-                  <span className="text-jeopardy-gold font-bold text-xl md:text-2xl lg:text-3xl drop-shadow-lg">
+                  <span className="text-gradient-accent font-bold text-xl md:text-2xl lg:text-3xl">
                     ${clue.value}
                   </span>
                 )}

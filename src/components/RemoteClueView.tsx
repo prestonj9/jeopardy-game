@@ -30,10 +30,10 @@ export default function RemoteClueView({
       {/* Daily Double badge */}
       {isDailyDouble && clueState === "daily_double_wager" && (
         <div className="text-center py-4">
-          <h2 className="text-3xl font-bold text-jeopardy-gold animate-pulse">
+          <h2 className="text-3xl font-bold text-gradient-accent animate-gradient-reveal">
             DAILY DOUBLE!
           </h2>
-          <p className="text-white/60 mt-1">Waiting for wager...</p>
+          <p className="text-text-secondary mt-1">Waiting for wager...</p>
         </div>
       )}
 
@@ -41,13 +41,13 @@ export default function RemoteClueView({
       {clueState !== "daily_double_wager" && (
         <>
           <div className="text-center">
-            <span className="text-jeopardy-gold font-bold text-xl">
+            <span className="text-gradient-accent font-bold text-xl">
               ${value}
             </span>
           </div>
 
-          <div className="bg-jeopardy-category rounded-lg p-4">
-            <p className="text-white text-base leading-relaxed">
+          <div className="bg-surface rounded-xl p-4 border border-border">
+            <p className="text-text-primary text-base leading-relaxed">
               {clueText}
             </p>
           </div>
@@ -56,11 +56,11 @@ export default function RemoteClueView({
 
       {/* Correct Answer — always visible on host remote */}
       {correctResponse && clueState !== "daily_double_wager" && (
-        <div className="border-2 border-jeopardy-gold/50 rounded-lg p-3 bg-jeopardy-gold/10">
-          <p className="text-jeopardy-gold/70 text-xs uppercase tracking-wider mb-0.5">
+        <div className="border-2 border-accent/30 rounded-xl p-3 bg-accent/5">
+          <p className="text-accent/70 text-xs uppercase tracking-wider mb-0.5">
             Answer
           </p>
-          <p className="text-jeopardy-gold text-lg font-bold">
+          <p className="text-accent text-lg font-bold">
             {correctResponse}
           </p>
         </div>
@@ -71,10 +71,10 @@ export default function RemoteClueView({
         {/* Showing clue with countdown */}
         {clueState === "showing_clue" && buzzCountdown !== null && buzzCountdown > 0 && (
           <div className="text-center py-4">
-            <p className="text-white/50 text-sm uppercase tracking-wider">
+            <p className="text-text-secondary text-sm uppercase tracking-wider">
               Buzzers open in
             </p>
-            <span className="text-5xl font-black text-jeopardy-gold">
+            <span className="text-5xl font-black text-accent">
               {buzzCountdown}
             </span>
           </div>
@@ -83,7 +83,7 @@ export default function RemoteClueView({
         {/* Showing clue without countdown */}
         {clueState === "showing_clue" && (buzzCountdown === null || buzzCountdown === 0) && (
           <div className="text-center py-2">
-            <p className="text-white/40 text-sm">Waiting...</p>
+            <p className="text-text-tertiary text-sm">Waiting...</p>
           </div>
         )}
 
@@ -91,8 +91,8 @@ export default function RemoteClueView({
         {clueState === "buzzing_open" && (
           <div className="text-center py-4">
             <div className="flex items-center justify-center gap-2">
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
-              <span className="text-green-400 text-xl font-bold">
+              <div className="w-3 h-3 bg-success rounded-full animate-pulse" />
+              <span className="text-success text-xl font-bold">
                 Buzzers OPEN
               </span>
             </div>
@@ -103,10 +103,10 @@ export default function RemoteClueView({
         {clueState === "player_answering" && answeringPlayerName && (
           <div className="space-y-3">
             <div className="text-center">
-              <p className="text-white/50 text-xs uppercase tracking-wider">
+              <p className="text-text-secondary text-xs uppercase tracking-wider">
                 Answering
               </p>
-              <p className="text-white text-2xl font-bold">
+              <p className="text-text-primary text-2xl font-bold">
                 {answeringPlayerName}
               </p>
             </div>
@@ -114,15 +114,15 @@ export default function RemoteClueView({
             <div className="flex gap-3">
               <button
                 onClick={() => onJudge(true)}
-                className="flex-1 py-5 bg-green-500 text-white font-bold text-xl rounded-xl hover:bg-green-400 active:scale-95 transition-all"
+                className="flex-1 py-5 bg-success text-white font-bold text-xl rounded-xl hover:opacity-90 active:scale-95 transition-all"
               >
-                ✓ Correct
+                Correct
               </button>
               <button
                 onClick={() => onJudge(false)}
-                className="flex-1 py-5 bg-red-500 text-white font-bold text-xl rounded-xl hover:bg-red-400 active:scale-95 transition-all"
+                className="flex-1 py-5 bg-danger text-white font-bold text-xl rounded-xl hover:opacity-90 active:scale-95 transition-all"
               >
-                ✗ Wrong
+                Wrong
               </button>
             </div>
           </div>
@@ -132,7 +132,7 @@ export default function RemoteClueView({
         {clueState !== "player_answering" && clueState !== "daily_double_wager" && (
           <button
             onClick={onSkip}
-            className="w-full py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 active:scale-95 transition-all"
+            className="w-full py-3 bg-surface text-text-primary font-bold rounded-xl hover:bg-surface-hover border border-border active:scale-95 transition-all"
           >
             Skip Clue
           </button>

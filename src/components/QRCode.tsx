@@ -16,12 +16,12 @@ export default function QRCodeDisplay({ gameId }: QRCodeDisplayProps) {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="bg-white p-3 rounded-lg">
+      <div className="bg-white p-3 rounded-lg border border-border">
         <QRCodeSVG value={url} size={180} />
       </div>
-      <p className="text-white/40 text-xs mt-2">
+      <p className="text-text-tertiary text-xs mt-2">
         Scan to join or go to{" "}
-        <span className="text-white/60">/play</span>
+        <span className="text-text-secondary">/play</span>
       </p>
     </div>
   );

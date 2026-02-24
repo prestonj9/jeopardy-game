@@ -128,17 +128,17 @@ export default function HostRemotePage() {
   // ── Loading ──────────────────────────────────────────────────
   if (!gameState) {
     return (
-      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           {socketError ? (
             <>
-              <p className="text-red-400 text-xl mb-4">{socketError}</p>
-              <a href="/create" className="text-jeopardy-gold underline">Create a new game</a>
+              <p className="text-danger text-xl mb-4">{socketError}</p>
+              <a href="/create" className="text-accent underline">Create a new game</a>
             </>
           ) : (
             <>
-              <div className="animate-spin w-10 h-10 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-white text-base">
+              <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-text-secondary text-base">
                 {isConnected ? "Loading game..." : "Connecting..."}
               </p>
             </>
@@ -151,12 +151,12 @@ export default function HostRemotePage() {
   // ── New Round Loading ───────────────────────────────────────
   if (isNewRoundLoading) {
     return (
-      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-6">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
         <div className="text-center max-w-sm">
-          <div className="animate-spin w-10 h-10 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-6" />
+          <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}
-            className="text-white text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
+            className="text-text-secondary text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
           >
             {LOADING_MESSAGES[messageIndex]}
           </p>
@@ -202,26 +202,26 @@ export default function HostRemotePage() {
   if (gameState.status === "finished") {
     const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
     return (
-      <div className="min-h-screen bg-jeopardy-blue flex flex-col items-center p-6 overflow-y-auto">
+      <div className="min-h-screen bg-white flex flex-col items-center p-6 overflow-y-auto">
         {/* Final Scores */}
-        <h2 className="text-3xl font-bold text-jeopardy-gold mb-6 mt-4">Final Scores</h2>
+        <h2 className="text-3xl font-bold text-gradient-accent mb-6 mt-4">Final Scores</h2>
         <div className="w-full max-w-md space-y-2 mb-8">
           {sortedPlayers.map((player, i) => (
             <div
               key={player.id}
-              className={`flex justify-between items-center px-4 py-3 rounded-lg ${
+              className={`flex justify-between items-center px-4 py-3 rounded-xl ${
                 i === 0
-                  ? "bg-jeopardy-gold/20 ring-2 ring-jeopardy-gold"
-                  : "bg-white/5"
+                  ? "bg-accent/10 ring-2 ring-accent"
+                  : "bg-surface border border-border"
               }`}
             >
-              <span className="text-white font-bold">
+              <span className="text-text-primary font-bold">
                 {i === 0 ? "🏆 " : `#${i + 1} `}
                 {player.name}
               </span>
               <span
                 className={`font-bold ${
-                  player.score < 0 ? "text-red-400" : "text-jeopardy-gold"
+                  player.score < 0 ? "text-danger" : "text-accent"
                 }`}
               >
                 ${player.score.toLocaleString()}
@@ -231,8 +231,8 @@ export default function HostRemotePage() {
         </div>
 
         {/* New Round Form */}
-        <div className="w-full max-w-md bg-jeopardy-category rounded-xl p-6">
-          <h3 className="text-xl font-bold text-jeopardy-gold mb-4 text-center">
+        <div className="w-full max-w-md bg-surface rounded-2xl p-6 border border-border">
+          <h3 className="text-xl font-bold text-text-primary mb-4 text-center">
             New Round
           </h3>
           <input
@@ -241,12 +241,12 @@ export default function HostRemotePage() {
             onChange={(e) => setNewRoundTopic(e.target.value)}
             placeholder="Enter a topic..."
             maxLength={500}
-            className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-lg focus:outline-none focus:ring-2 focus:ring-jeopardy-gold mb-4"
+            className="w-full px-4 py-3 rounded-lg bg-white border border-border text-text-primary placeholder-text-tertiary text-lg focus:outline-none focus:ring-2 focus:ring-accent mb-4"
           />
           <button
             onClick={handleNewRound}
             disabled={!newRoundTopic.trim()}
-            className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-jeopardy-gold text-jeopardy-category hover:brightness-110 active:scale-95"
+            className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-accent to-accent-cyan text-white hover:opacity-90 active:scale-95"
           >
             Generate New Board
           </button>
@@ -269,7 +269,7 @@ export default function HostRemotePage() {
     : undefined;
 
   return (
-    <div className="min-h-screen bg-jeopardy-blue flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Active Clue View */}
       {hasActiveClue ? (
         <div className="flex-1">
@@ -298,7 +298,7 @@ export default function HostRemotePage() {
           {allCluesRevealed && (
             <button
               onClick={handleStartFinal}
-              className="w-full py-3 bg-jeopardy-gold text-jeopardy-category font-bold text-lg rounded-xl hover:brightness-110 active:scale-95 transition-all animate-pulse"
+              className="w-full py-3 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-lg rounded-xl hover:opacity-90 active:scale-95 transition-all animate-pulse"
             >
               Start Final Jeopardy
             </button>

@@ -11,14 +11,14 @@ interface MiniBoardProps {
 export default function MiniBoard({ board, onSelectClue, disabled }: MiniBoardProps) {
   return (
     <div className="w-full">
-      <div className="grid grid-cols-6 gap-[2px] bg-black/50 rounded-lg overflow-hidden">
+      <div className="grid grid-cols-6 gap-1 p-1 rounded-lg">
         {/* Category Headers */}
         {board.categories.map((cat, ci) => (
           <div
             key={`cat-${ci}`}
-            className="bg-jeopardy-category p-1.5 flex items-center justify-center min-h-[40px]"
+            className="bg-surface p-1.5 flex items-center justify-center min-h-[40px] rounded-lg"
           >
-            <span className="text-white font-bold text-center text-[10px] leading-tight uppercase line-clamp-2">
+            <span className="text-text-primary font-bold text-center text-[10px] leading-tight uppercase line-clamp-2">
               {cat.name}
             </span>
           </div>
@@ -35,14 +35,14 @@ export default function MiniBoard({ board, onSelectClue, disabled }: MiniBoardPr
                 key={`clue-${ci}-${clueIndex}`}
                 onClick={() => !isRevealed && !disabled && onSelectClue(ci, clueIndex)}
                 disabled={isRevealed || disabled}
-                className={`py-2 flex items-center justify-center transition-all ${
+                className={`py-2 flex items-center justify-center transition-all rounded-lg ${
                   isRevealed
-                    ? "bg-[#1a1a2e]/50 cursor-default"
-                    : "bg-jeopardy-blue active:scale-90 active:brightness-150"
+                    ? "bg-white/80 opacity-30 cursor-default"
+                    : "bg-surface active:scale-90 active:bg-surface-hover"
                 }`}
               >
                 {!isRevealed && (
-                  <span className="text-jeopardy-gold font-bold text-xs">
+                  <span className="text-accent font-bold text-xs">
                     ${clue.value}
                   </span>
                 )}

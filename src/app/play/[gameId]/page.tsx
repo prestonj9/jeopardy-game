@@ -171,12 +171,12 @@ export default function PlayerGamePage() {
   // Error state
   if (joinError) {
     return (
-      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-red-400 text-xl mb-4">{joinError}</p>
+          <p className="text-danger text-xl mb-4">{joinError}</p>
           <a
             href="/play"
-            className="text-jeopardy-gold underline hover:brightness-110"
+            className="text-accent underline hover:opacity-80"
           >
             Try again
           </a>
@@ -188,10 +188,10 @@ export default function PlayerGamePage() {
   // Loading
   if (!gameState || !playerId) {
     return (
-      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-white text-lg">Joining game...</p>
+          <div className="animate-spin w-12 h-12 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-text-secondary text-lg">Joining game...</p>
         </div>
       </div>
     );
@@ -200,12 +200,12 @@ export default function PlayerGamePage() {
   // New Round Loading
   if (isNewRoundLoading) {
     return (
-      <div className="min-h-[100dvh] bg-jeopardy-blue flex items-center justify-center p-4">
+      <div className="min-h-[100dvh] bg-white flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
-          <div className="animate-spin w-10 h-10 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-6" />
+          <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}
-            className="text-white text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
+            className="text-text-secondary text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
           >
             {LOADING_MESSAGES[messageIndex]}
           </p>
@@ -283,15 +283,15 @@ export default function PlayerGamePage() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-jeopardy-blue flex flex-col"
+      className="min-h-[100dvh] bg-white flex flex-col"
       style={{ overscrollBehavior: "none" }}
     >
       {/* Header with score */}
-      <div className="px-4 py-3 bg-jeopardy-category flex justify-between items-center">
-        <span className="text-white font-bold">{myPlayer?.name}</span>
+      <div className="px-4 py-3 bg-surface border-b border-border flex justify-between items-center">
+        <span className="text-text-primary font-bold">{myPlayer?.name}</span>
         <span
           className={`font-bold text-xl ${
-            (myPlayer?.score ?? 0) < 0 ? "text-red-400" : "text-jeopardy-gold"
+            (myPlayer?.score ?? 0) < 0 ? "text-danger" : "text-accent"
           }`}
         >
           ${(myPlayer?.score ?? 0).toLocaleString()}
@@ -303,12 +303,12 @@ export default function PlayerGamePage() {
         {/* No active clue */}
         {!currentClue && (
           <div className="text-center">
-            <p className="text-white/60 text-lg">
+            <p className="text-text-secondary text-lg">
               Waiting for host to select a clue...
             </p>
             {lastCorrectResponse && (
-              <div className="mt-4 p-4 bg-white/5 rounded-lg">
-                <p className="text-jeopardy-gold font-bold">
+              <div className="mt-4 p-4 bg-surface rounded-xl border border-border">
+                <p className="text-accent font-bold">
                   {lastCorrectResponse}
                 </p>
               </div>
@@ -319,7 +319,7 @@ export default function PlayerGamePage() {
         {/* Daily Double wager (for designated player) */}
         {isDDForMe && showDDWager && myPlayer && (
           <div className="w-full max-w-sm">
-            <h2 className="text-3xl font-bold text-jeopardy-gold text-center mb-4 animate-pulse">
+            <h2 className="text-3xl font-bold text-gradient-accent text-center mb-4 animate-gradient-reveal">
               DAILY DOUBLE!
             </h2>
             <WagerInput
@@ -333,10 +333,10 @@ export default function PlayerGamePage() {
         {/* Daily Double waiting (for other players) */}
         {isDDWagerPhase && !isDDForMe && (
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-jeopardy-gold mb-2">
+            <h2 className="text-3xl font-bold text-gradient-accent mb-2">
               DAILY DOUBLE!
             </h2>
-            <p className="text-white/60">
+            <p className="text-text-secondary">
               Another player is wagering...
             </p>
           </div>
@@ -347,13 +347,13 @@ export default function PlayerGamePage() {
           <div className="w-full max-w-md text-center">
             {/* Clue value */}
             <div className="mb-2">
-              <span className="text-jeopardy-gold font-bold text-lg">
+              <span className="text-gradient-accent font-bold text-lg">
                 ${activeClueValue}
               </span>
             </div>
 
             {/* Clue text */}
-            <p className="text-white text-xl md:text-2xl font-medium leading-relaxed mb-8">
+            <p className="text-text-primary text-xl md:text-2xl font-medium leading-relaxed mb-8">
               {activeClueText}
             </p>
 
@@ -362,8 +362,8 @@ export default function PlayerGamePage() {
               <div
                 className={`mb-4 p-3 rounded-lg font-bold text-lg ${
                   lastJudgeResult.correct
-                    ? "bg-green-500/20 text-green-400"
-                    : "bg-red-500/20 text-red-400"
+                    ? "bg-success/10 text-success animate-flash-green"
+                    : "bg-danger/10 text-danger animate-flash-red"
                 }`}
               >
                 {lastJudgeResult.correct ? "Correct!" : "Incorrect"}

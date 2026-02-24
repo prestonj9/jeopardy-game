@@ -19,29 +19,29 @@ export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
       : "";
 
   return (
-    <div className="min-h-screen bg-jeopardy-blue flex flex-col items-center justify-center p-8 relative">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 relative">
       {/* Host Remote button — top-right corner */}
       <button
         onClick={() => setShowHostQR(true)}
-        className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg transition-all"
+        className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2 bg-surface hover:bg-surface-hover border border-border rounded-lg transition-all"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
-        <span className="text-white/70 text-sm font-medium">Host Remote</span>
+        <span className="text-text-secondary text-sm font-medium">Host Remote</span>
       </button>
 
       {/* Game Code */}
-      <p className="text-white/60 text-sm uppercase tracking-wider mb-2">
+      <p className="text-text-secondary text-sm uppercase tracking-wider mb-2">
         Game Code
       </p>
-      <h2 className="text-7xl md:text-9xl font-bold text-jeopardy-gold tracking-[0.3em] mb-8">
+      <h2 className="text-7xl md:text-9xl font-bold text-gradient-accent tracking-[0.3em] mb-8">
         {gameId}
       </h2>
 
       {/* Player QR */}
       <div className="flex flex-col items-center mb-12">
-        <p className="text-white/80 text-lg font-bold uppercase tracking-wider mb-3">
+        <p className="text-text-primary text-lg font-bold uppercase tracking-wider mb-3">
           Scan to Join
         </p>
         <QRCodeDisplay gameId={gameId} />
@@ -49,25 +49,25 @@ export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
 
       {/* Player List */}
       <div className="w-full max-w-2xl">
-        <p className="text-white/60 text-sm uppercase tracking-wider mb-3 text-center">
+        <p className="text-text-secondary text-sm uppercase tracking-wider mb-3 text-center">
           Players ({players.length})
         </p>
         <div className="flex flex-wrap gap-3 justify-center">
           {players.map((player) => (
             <div
               key={player.id}
-              className="flex items-center gap-2 px-5 py-3 bg-jeopardy-category rounded-lg"
+              className="flex items-center gap-2 px-5 py-3 bg-surface border border-border rounded-lg"
             >
               <div
                 className={`w-2.5 h-2.5 rounded-full ${
                   player.isConnected ? "bg-green-400" : "bg-gray-500"
                 }`}
               />
-              <span className="text-white font-bold text-lg">{player.name}</span>
+              <span className="text-text-primary font-bold text-lg">{player.name}</span>
             </div>
           ))}
           {players.length === 0 && (
-            <p className="text-white/30 text-lg py-4">
+            <p className="text-text-tertiary text-lg py-4">
               Waiting for players to join...
             </p>
           )}
@@ -81,23 +81,23 @@ export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
           onClick={() => setShowHostQR(false)}
         >
           <div
-            className="bg-jeopardy-category rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl"
+            className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-border"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-jeopardy-gold text-2xl font-bold mb-2">
+            <h3 className="text-text-primary text-2xl font-bold mb-2">
               Host Remote
             </h3>
-            <p className="text-white/60 text-sm mb-6">
+            <p className="text-text-secondary text-sm mb-6">
               Scan with your phone to control the game
             </p>
 
-            <div className="bg-white p-4 rounded-lg inline-block mb-6">
+            <div className="bg-white p-4 rounded-lg inline-block mb-6 border border-border">
               <QRCodeSVG value={remoteUrl} size={200} />
             </div>
 
             <button
               onClick={() => setShowHostQR(false)}
-              className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-lg transition-all"
+              className="w-full py-3 bg-surface hover:bg-surface-hover text-text-primary font-bold rounded-lg transition-all"
             >
               Close
             </button>

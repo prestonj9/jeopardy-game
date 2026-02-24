@@ -86,12 +86,12 @@ export default function CreatePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-6"></div>
+          <div className="animate-spin w-12 h-12 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6"></div>
           <p
             key={messageIndex}
-            className="text-white text-xl animate-[fadeIn_0.5s_ease-in] min-h-[3.5rem]"
+            className="text-text-secondary text-xl animate-[fadeIn_0.5s_ease-in] min-h-[3.5rem]"
           >
             {LOADING_MESSAGES[messageIndex]}
           </p>
@@ -101,22 +101,22 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-jeopardy-category rounded-xl p-8 shadow-2xl">
-        <h1 className="text-3xl font-bold text-jeopardy-gold text-center mb-8">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-surface rounded-2xl p-8 shadow-sm border border-border">
+        <h1 className="text-3xl font-bold text-text-primary text-center mb-8">
           Create a Game
         </h1>
 
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setMode("topic")}
-            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "topic" ? "bg-jeopardy-gold text-jeopardy-category" : "bg-jeopardy-blue/50 text-white")}
+            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "topic" ? "bg-gradient-to-r from-accent to-accent-cyan text-white" : "bg-white text-text-secondary border border-border")}
           >
             Enter a Topic
           </button>
           <button
             onClick={() => setMode("upload")}
-            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "upload" ? "bg-jeopardy-gold text-jeopardy-category" : "bg-jeopardy-blue/50 text-white")}
+            className={"flex-1 py-3 rounded-lg font-bold text-lg transition-colors " + (mode === "upload" ? "bg-gradient-to-r from-accent to-accent-cyan text-white" : "bg-white text-text-secondary border border-border")}
           >
             Upload a File
           </button>
@@ -124,7 +124,7 @@ export default function CreatePage() {
 
         {mode === "topic" && (
           <div className="mb-6">
-            <label className="block text-white text-sm font-medium mb-2">
+            <label className="block text-text-primary text-sm font-medium mb-2">
               What should the game be about?
             </label>
             <input
@@ -133,9 +133,9 @@ export default function CreatePage() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Harry Potter, US History, Science"
               maxLength={500}
-              className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-lg focus:outline-none focus:ring-2 focus:ring-jeopardy-gold"
+              className="w-full px-4 py-3 rounded-lg bg-white border border-border text-text-primary placeholder-text-tertiary text-lg focus:outline-none focus:ring-2 focus:ring-accent"
             />
-            <p className="text-white/40 text-sm mt-1">
+            <p className="text-text-tertiary text-sm mt-1">
               {topic.length}/500 characters
             </p>
           </div>
@@ -143,16 +143,16 @@ export default function CreatePage() {
 
         {mode === "upload" && (
           <div className="mb-6">
-            <label className="block text-white text-sm font-medium mb-2">
+            <label className="block text-text-primary text-sm font-medium mb-2">
               Upload source material (.pdf or .txt)
             </label>
-            <label className="w-full border-2 border-dashed border-white/30 rounded-lg p-8 text-center cursor-pointer hover:border-jeopardy-gold/50 transition-colors block">
+            <label className="w-full border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-accent/50 transition-colors block">
               {uploadLoading ? (
-                <span className="text-white">Extracting text...</span>
+                <span className="text-text-secondary">Extracting text...</span>
               ) : fileName ? (
-                <span className="text-jeopardy-gold font-bold">{fileName}</span>
+                <span className="text-accent font-bold">{fileName}</span>
               ) : (
-                <span className="text-white/60">Click to upload (PDF or TXT, max 10MB)</span>
+                <span className="text-text-secondary">Click to upload (PDF or TXT, max 10MB)</span>
               )}
               <input
                 type="file"
@@ -168,7 +168,7 @@ export default function CreatePage() {
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+          <div className="mb-4 p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm">
             {error}
           </div>
         )}
@@ -176,7 +176,7 @@ export default function CreatePage() {
         <button
           onClick={handleGenerate}
           disabled={!canGenerate}
-          className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-jeopardy-gold text-jeopardy-category hover:brightness-110"
+          className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-accent to-accent-cyan text-white hover:opacity-90"
         >
           Generate Game
         </button>

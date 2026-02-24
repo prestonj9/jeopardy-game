@@ -22,11 +22,11 @@ export default function WagerInput({
   const effectiveMax = Math.max(maxWager, minWager);
 
   return (
-    <div className="w-full max-w-sm mx-auto p-6 bg-jeopardy-category rounded-xl">
-      <h3 className="text-white text-lg font-bold mb-1 text-center">
+    <div className="w-full max-w-sm mx-auto p-6 bg-surface rounded-2xl border border-border">
+      <h3 className="text-text-primary text-lg font-bold mb-1 text-center">
         {label}
       </h3>
-      <p className="text-white/50 text-sm text-center mb-4">
+      <p className="text-text-secondary text-sm text-center mb-4">
         Your score: ${playerScore.toLocaleString()}
       </p>
 
@@ -40,7 +40,7 @@ export default function WagerInput({
             const val = parseInt(e.target.value) || 0;
             setAmount(Math.max(minWager, Math.min(val, effectiveMax)));
           }}
-          className="w-full px-4 py-3 text-2xl font-bold text-center bg-white/10 border border-white/20 rounded-lg text-jeopardy-gold focus:outline-none focus:ring-2 focus:ring-jeopardy-gold"
+          className="w-full px-4 py-3 text-2xl font-bold text-center bg-white border border-border rounded-lg text-accent focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>
 
@@ -50,14 +50,14 @@ export default function WagerInput({
           <button
             key={preset}
             onClick={() => setAmount(Math.min(preset, effectiveMax))}
-            className="flex-1 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm font-medium"
+            className="flex-1 py-2 bg-white text-text-primary rounded-lg hover:bg-surface-hover border border-border transition-colors text-sm font-medium"
           >
             ${preset}
           </button>
         ))}
         <button
           onClick={() => setAmount(effectiveMax)}
-          className="flex-1 py-2 bg-jeopardy-buzz/30 text-jeopardy-buzz rounded-lg hover:bg-jeopardy-buzz/40 transition-colors text-sm font-bold"
+          className="flex-1 py-2 bg-danger/10 text-danger rounded-lg hover:bg-danger/20 border border-danger/30 transition-colors text-sm font-bold"
         >
           ALL IN
         </button>
@@ -65,7 +65,7 @@ export default function WagerInput({
 
       <button
         onClick={() => onSubmit(amount)}
-        className="w-full py-4 bg-jeopardy-gold text-jeopardy-category font-bold text-xl rounded-lg hover:brightness-110 active:scale-95 transition-all"
+        className="w-full py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-lg hover:opacity-90 active:scale-95 transition-all"
       >
         Submit Wager
       </button>
