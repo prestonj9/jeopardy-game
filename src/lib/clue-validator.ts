@@ -1,4 +1,4 @@
-import type { AIBoardResponse } from "./ai-generator";
+import type { AIBoardResponse } from "./types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

@@ -156,6 +156,25 @@ export interface SerializableGameState {
   scores: ScoreMap;
 }
 
+// ── AI Board Response (shared between generator & validator) ─────────────────
+
+export interface AIBoardResponse {
+  categories: Array<{
+    name: string;
+    clues: Array<{
+      value: number;
+      clueText: string;
+      correctResponse: string;
+    }>;
+  }>;
+  dailyDouble: { categoryIndex: number; clueIndex: number };
+  finalJeopardy: {
+    category: string;
+    clueText: string;
+    correctResponse: string;
+  };
+}
+
 // ── API Types ───────────────────────────────────────────────────────────────
 
 export interface GenerateBoardRequest {

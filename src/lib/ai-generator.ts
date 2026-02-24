@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { Board, GenerateBoardRequest, GenerateBoardResponse } from "./types.ts";
+import type { AIBoardResponse, Board, GenerateBoardRequest, GenerateBoardResponse } from "./types.ts";
 import { validateBoard, type ClueValidationResult } from "./clue-validator";
 
 const client = new Anthropic();
@@ -56,23 +56,6 @@ ${req.content}`;
 
   return `Generate a complete Jeopardy board about: ${req.topic}
 Use your general knowledge. Make it fun and varied.`;
-}
-
-export interface AIBoardResponse {
-  categories: Array<{
-    name: string;
-    clues: Array<{
-      value: number;
-      clueText: string;
-      correctResponse: string;
-    }>;
-  }>;
-  dailyDouble: { categoryIndex: number; clueIndex: number };
-  finalJeopardy: {
-    category: string;
-    clueText: string;
-    correctResponse: string;
-  };
 }
 
 function parseResponse(text: string): AIBoardResponse {
