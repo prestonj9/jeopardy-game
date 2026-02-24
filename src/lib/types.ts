@@ -219,6 +219,7 @@ export interface ServerToClientEvents {
   "game:error": (data: { message: string }) => void;
   "game:state_sync": (data: SerializableGameState) => void;
   "game:host_clue_answer": (data: { correctResponse: string }) => void;
+  "game:new_round_loading": () => void;
 }
 
 export interface ClientToServerEvents {
@@ -251,6 +252,7 @@ export interface ClientToServerEvents {
   "player:daily_double_wager": (data: { amount: number }) => void;
   "player:final_wager": (data: { amount: number }) => void;
   "player:final_answer": (data: { answer: string }) => void;
+  "host:new_round": (data: { topic: string }) => void;
 }
 
 export interface InterServerEvents {

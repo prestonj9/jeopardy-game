@@ -56,7 +56,8 @@ type GameAction =
       };
     }
   | { type: "GAME_FINISHED"; finalScores: ScoreMap }
-  | { type: "BUZZ_COUNTDOWN"; secondsRemaining: number };
+  | { type: "BUZZ_COUNTDOWN"; secondsRemaining: number }
+  | { type: "NEW_ROUND_LOADING" };
 
 interface GameUIState {
   gameState: SerializableGameState | null;
@@ -73,12 +74,13 @@ interface GameUIState {
     answer: string;
   } | null;
   buzzCountdown: number | null;
+  isNewRoundLoading: boolean;
 }
 
 function gameReducer(state: GameUIState, action: GameAction): GameUIState {
   switch (action.type) {
     case "SET_STATE":
-      return { ...state, gameState: action.state };
+      return { ...state, gameState: action.state, isNewRoundLoading: false };
 
     case "PLAYER_JOINED":
       if (!state.gameState) return state;
@@ -306,6 +308,9 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
         },
       };
 
+    case "NEW_ROUND_LOADING":
+      return { ...state, isNewRoundLoading: true };
+
     default:
       return state;
   }
@@ -317,6 +322,7 @@ const initialState: GameUIState = {
   lastCorrectResponse: null,
   lastFinalResult: null,
   buzzCountdown: null,
+  isNewRoundLoading: false,
 };
 
 export function useGameState(socket: TypedSocket | null) {
@@ -375,6 +381,8 @@ export function useGameState(socket: TypedSocket | null) {
         dispatch({ type: "GAME_FINISHED", finalScores: data.finalScores }),
       "game:buzz_countdown": (data: { secondsRemaining: number }) =>
         dispatch({ type: "BUZZ_COUNTDOWN", secondsRemaining: data.secondsRemaining }),
+      "game:new_round_loading": () =>
+        dispatch({ type: "NEW_ROUND_LOADING" }),
     };
 
     // Register all handlers

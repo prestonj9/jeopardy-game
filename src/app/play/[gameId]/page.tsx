@@ -9,6 +9,7 @@ import BuzzButton from "@/components/BuzzButton";
 import Scoreboard from "@/components/Scoreboard";
 import WagerInput from "@/components/WagerInput";
 import FinalJeopardy from "@/components/FinalJeopardy";
+import { LOADING_MESSAGES } from "@/lib/constants";
 
 export default function PlayerGamePage() {
   const params = useParams();
@@ -16,7 +17,7 @@ export default function PlayerGamePage() {
   const gameId = params.gameId as string;
   const playerName = searchParams.get("name") || "Player";
   const { socket, isConnected } = useSocket();
-  const { gameState, lastJudgeResult, lastCorrectResponse, lastFinalResult, buzzCountdown } =
+  const { gameState, lastJudgeResult, lastCorrectResponse, lastFinalResult, buzzCountdown, isNewRoundLoading } =
     useGameState(socket);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export default function PlayerGamePage() {
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
   const [showDDWager, setShowDDWager] = useState(false);
   const [ddMaxWager, setDDMaxWager] = useState(1000);
+  const [messageIndex, setMessageIndex] = useState(0);
 
   // Join game (first time only)
   useEffect(() => {
@@ -119,6 +121,25 @@ export default function PlayerGamePage() {
     }
   }, [gameState?.currentClue?.state, gameState?.currentClue?.playersWhoAttempted, playerId]);
 
+  // Reset local state when a new round starts
+  useEffect(() => {
+    if (gameState?.status === "active" && !gameState.currentClue) {
+      setHasBuzzed(false);
+      setActiveClueText(null);
+      setShowDDWager(false);
+    }
+  }, [gameState?.status, gameState?.currentClue]);
+
+  // Rotating loading messages for new round
+  useEffect(() => {
+    if (!isNewRoundLoading) return;
+    setMessageIndex(Math.floor(Math.random() * LOADING_MESSAGES.length));
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isNewRoundLoading]);
+
   const handleBuzz = useCallback(() => {
     if (!socket || hasBuzzed) return;
     socket.emit("player:buzz");
@@ -171,6 +192,23 @@ export default function PlayerGamePage() {
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-white text-lg">Joining game...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // New Round Loading
+  if (isNewRoundLoading) {
+    return (
+      <div className="min-h-[100dvh] bg-jeopardy-blue flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <div className="animate-spin w-10 h-10 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-6" />
+          <p
+            key={messageIndex}
+            className="text-white text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
+          >
+            {LOADING_MESSAGES[messageIndex]}
+          </p>
         </div>
       </div>
     );

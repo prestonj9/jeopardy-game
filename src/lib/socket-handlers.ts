@@ -13,7 +13,9 @@ import {
   findGameBySocketId,
   getScoreMap,
   serializeGameState,
+  resetGameForNewRound,
 } from "./game-manager.ts";
+import { generateBoard } from "./ai-generator.ts";
 
 type TypedServer = Server<
   ClientToServerEvents,
@@ -374,6 +376,49 @@ export function registerSocketHandlers(io: TypedServer): void {
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 
+    // ── Host: New Round ────────────────────────────────────────────────
+    socket.on("host:new_round", async (data) => {
+      const result = findGameBySocketId(socket.id);
+      if (!result || !result.isHost) return;
+      const { game } = result;
+
+      if (game.status !== "finished") {
+        socket.emit("game:error", { message: "Game must be finished to start a new round" });
+        return;
+      }
+
+      const topic = data.topic?.trim();
+      if (!topic || topic.length === 0) {
+        socket.emit("game:error", { message: "Topic is required" });
+        return;
+      }
+
+      // Notify all clients to show loading screen
+      io.to(game.id).emit("game:new_round_loading");
+
+      try {
+        console.log(`[new_round] Generating board for topic: "${topic}" in game ${game.id}`);
+        const { board, finalJeopardy } = await generateBoard({
+          mode: "topic",
+          topic,
+        });
+
+        resetGameForNewRound(game, board, finalJeopardy);
+
+        console.log(`[new_round] Board generated, game ${game.id} reset to active`);
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+
+        // Send correct responses to host
+        socket.emit("game:host_clue_answer", { correctResponse: "" });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Board generation failed";
+        console.error(`[new_round] Failed for game ${game.id}:`, message);
+        socket.emit("game:error", { message: `New round failed: ${message}` });
+        // Emit state_sync so clients can exit loading state
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+      }
+    });
+
     // ── Player: Join ──────────────────────────────────────────────────
     socket.on("player:join", (data, callback) => {
       const game = getGame(data.gameId);
@@ -396,7 +441,25 @@ export function registerSocketHandlers(io: TypedServer): void {
           io.to(game.id).emit("game:state_sync", serializeGameState(game));
           return;
         }
-        callback({ success: false, error: "Game already in progress" });
+
+        // Allow new players to join mid-game (active or final_jeopardy)
+        if (game.status === "active" || game.status === "final_jeopardy") {
+          const player = addPlayer(game, socket.id, data.playerName);
+          socket.data.gameId = game.id;
+          socket.data.playerId = player.id;
+          socket.join(game.id);
+          callback({ success: true, playerId: player.id });
+          io.to(game.id).emit("game:player_joined", {
+            id: player.id,
+            name: player.name,
+            score: 0,
+            isConnected: true,
+          });
+          io.to(game.id).emit("game:state_sync", serializeGameState(game));
+          return;
+        }
+
+        callback({ success: false, error: "Game already finished" });
         return;
       }
 

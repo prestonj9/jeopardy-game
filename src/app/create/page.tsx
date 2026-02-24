@@ -2,29 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-const LOADING_MESSAGES = [
-  "Generating with AI...",
-  "Pretending to think really hard...",
-  "Googling the answers... just kidding",
-  "Making up facts with confidence...",
-  "Hallucinating responsibly...",
-  "Definitely not copying from Wikipedia...",
-  "Consulting my neural networks (they're arguing)",
-  "I swear I knew this before you asked...",
-  "Writing wrong answers and then fixing them...",
-  "Trying to spell 'Jeopardy' correctly...",
-  "Generating categories nobody asked for...",
-  "Hold on, my brain is buffering...",
-  "Crafting clues that are technically correct (the best kind)",
-  "Running on vibes and matrix multiplication...",
-  "What is... give me a second...",
-  "Doing 400 billion math problems for this...",
-  "Almost done (AI for 'I have no idea how long this takes')",
-  "Overthinking every single clue...",
-  "This is my audition for the real show",
-  "Fun fact: I don't actually know anything, I just predict words",
-];
+import { LOADING_MESSAGES } from "@/lib/constants";
 
 type Mode = "topic" | "upload";
 

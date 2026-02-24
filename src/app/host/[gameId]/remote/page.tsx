@@ -9,17 +9,20 @@ import RemoteClueView from "@/components/RemoteClueView";
 import Scoreboard from "@/components/Scoreboard";
 import Lobby from "@/components/Lobby";
 import FinalJeopardy from "@/components/FinalJeopardy";
+import { LOADING_MESSAGES } from "@/lib/constants";
 
 export default function HostRemotePage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const { socket, isConnected } = useSocket();
-  const { gameState, lastFinalResult, buzzCountdown } = useGameState(socket);
+  const { gameState, lastFinalResult, buzzCountdown, isNewRoundLoading } = useGameState(socket);
   const [correctResponse, setCorrectResponse] = useState<string | null>(null);
   const [activeClueText, setActiveClueText] = useState<string | null>(null);
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
   const [activeClueIsDD, setActiveClueIsDD] = useState(false);
   const [socketError, setSocketError] = useState<string | null>(null);
+  const [newRoundTopic, setNewRoundTopic] = useState("");
+  const [messageIndex, setMessageIndex] = useState(0);
 
   // Join game room as host controller
   useEffect(() => {
@@ -98,6 +101,30 @@ export default function HostRemotePage() {
     [socket]
   );
 
+  const handleNewRound = useCallback(() => {
+    if (!socket || !newRoundTopic.trim()) return;
+    socket.emit("host:new_round", { topic: newRoundTopic.trim() });
+  }, [socket, newRoundTopic]);
+
+  // Reset local state when a new round starts
+  useEffect(() => {
+    if (gameState?.status === "active" && !gameState.currentClue) {
+      setCorrectResponse(null);
+      setActiveClueText(null);
+      setNewRoundTopic("");
+    }
+  }, [gameState?.status, gameState?.currentClue]);
+
+  // Rotating loading messages
+  useEffect(() => {
+    if (!isNewRoundLoading) return;
+    setMessageIndex(Math.floor(Math.random() * LOADING_MESSAGES.length));
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isNewRoundLoading]);
+
   // ── Loading ──────────────────────────────────────────────────
   if (!gameState) {
     return (
@@ -116,6 +143,23 @@ export default function HostRemotePage() {
               </p>
             </>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── New Round Loading ───────────────────────────────────────
+  if (isNewRoundLoading) {
+    return (
+      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <div className="animate-spin w-10 h-10 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-6" />
+          <p
+            key={messageIndex}
+            className="text-white text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
+          >
+            {LOADING_MESSAGES[messageIndex]}
+          </p>
         </div>
       </div>
     );
@@ -154,17 +198,60 @@ export default function HostRemotePage() {
     );
   }
 
-  // ── Finished ─────────────────────────────────────────────────
+  // ── Finished — scores + new round form ──────────────────────
   if (gameState.status === "finished") {
+    const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
     return (
-      <FinalJeopardy
-        state="results"
-        category=""
-        clueText=""
-        isHost={true}
-        players={gameState.players}
-        submissions={{}}
-      />
+      <div className="min-h-screen bg-jeopardy-blue flex flex-col items-center p-6 overflow-y-auto">
+        {/* Final Scores */}
+        <h2 className="text-3xl font-bold text-jeopardy-gold mb-6 mt-4">Final Scores</h2>
+        <div className="w-full max-w-md space-y-2 mb-8">
+          {sortedPlayers.map((player, i) => (
+            <div
+              key={player.id}
+              className={`flex justify-between items-center px-4 py-3 rounded-lg ${
+                i === 0
+                  ? "bg-jeopardy-gold/20 ring-2 ring-jeopardy-gold"
+                  : "bg-white/5"
+              }`}
+            >
+              <span className="text-white font-bold">
+                {i === 0 ? "🏆 " : `#${i + 1} `}
+                {player.name}
+              </span>
+              <span
+                className={`font-bold ${
+                  player.score < 0 ? "text-red-400" : "text-jeopardy-gold"
+                }`}
+              >
+                ${player.score.toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* New Round Form */}
+        <div className="w-full max-w-md bg-jeopardy-category rounded-xl p-6">
+          <h3 className="text-xl font-bold text-jeopardy-gold mb-4 text-center">
+            New Round
+          </h3>
+          <input
+            type="text"
+            value={newRoundTopic}
+            onChange={(e) => setNewRoundTopic(e.target.value)}
+            placeholder="Enter a topic..."
+            maxLength={500}
+            className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-lg focus:outline-none focus:ring-2 focus:ring-jeopardy-gold mb-4"
+          />
+          <button
+            onClick={handleNewRound}
+            disabled={!newRoundTopic.trim()}
+            className="w-full py-4 rounded-lg font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-jeopardy-gold text-jeopardy-category hover:brightness-110 active:scale-95"
+          >
+            Generate New Board
+          </button>
+        </div>
+      </div>
     );
   }
 

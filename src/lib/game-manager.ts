@@ -150,6 +150,38 @@ export function getSerializablePlayers(game: Game): SerializablePlayer[] {
   }));
 }
 
+export function resetGameForNewRound(
+  game: Game,
+  newBoard: Board,
+  newFinalJeopardy: { category: string; clueText: string; correctResponse: string }
+): void {
+  game.board = newBoard;
+  game.status = "active";
+  game.currentClue = null;
+  game.buzzOrder = [];
+  game.lastCorrectPlayerId = null;
+
+  if (game.buzzDelayTimer) {
+    clearTimeout(game.buzzDelayTimer);
+    game.buzzDelayTimer = null;
+  }
+
+  game.finalJeopardy = {
+    category: newFinalJeopardy.category,
+    clueText: newFinalJeopardy.clueText,
+    correctResponse: newFinalJeopardy.correctResponse,
+    state: "not_started",
+    submissions: new Map(),
+  };
+
+  // Reset all player scores to 0 and clear final jeopardy answers
+  for (const player of game.players.values()) {
+    player.score = 0;
+    player.finalWager = null;
+    player.finalAnswer = null;
+  }
+}
+
 export function serializeGameState(game: Game): SerializableGameState {
   return {
     id: game.id,

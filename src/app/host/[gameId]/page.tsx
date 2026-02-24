@@ -9,16 +9,30 @@ import ClueOverlay from "@/components/ClueOverlay";
 import Scoreboard from "@/components/Scoreboard";
 import DisplayLobby from "@/components/DisplayLobby";
 import FinalJeopardy from "@/components/FinalJeopardy";
+import QRCodeDisplay from "@/components/QRCode";
+import { LOADING_MESSAGES } from "@/lib/constants";
 
 export default function DisplayPage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const { socket, isConnected } = useSocket();
-  const { gameState, lastFinalResult, buzzCountdown } = useGameState(socket);
+  const { gameState, lastFinalResult, buzzCountdown, isNewRoundLoading } = useGameState(socket);
   const [activeClueText, setActiveClueText] = useState<string | null>(null);
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
   const [activeClueIsDD, setActiveClueIsDD] = useState(false);
   const [socketError, setSocketError] = useState<string | null>(null);
+  const [showJoinQR, setShowJoinQR] = useState(false);
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  // Rotating loading messages for new round
+  useEffect(() => {
+    if (!isNewRoundLoading) return;
+    setMessageIndex(Math.floor(Math.random() * LOADING_MESSAGES.length));
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isNewRoundLoading]);
 
   // Join game room as display (passive viewer)
   useEffect(() => {
@@ -74,6 +88,23 @@ export default function DisplayPage() {
     );
   }
 
+  // New Round Loading
+  if (isNewRoundLoading) {
+    return (
+      <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-6" />
+          <p
+            key={messageIndex}
+            className="text-white text-xl animate-[fadeIn_0.5s_ease-in] min-h-[3.5rem]"
+          >
+            {LOADING_MESSAGES[messageIndex]}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Lobby — display-only (no Start button)
   if (gameState.status === "lobby") {
     return (
@@ -84,35 +115,87 @@ export default function DisplayPage() {
     );
   }
 
+  // Join Round overlay — reusable across active/final/finished states
+  const joinRoundOverlay = (
+    <>
+      {/* Game code badge — top-left */}
+      <div className="absolute top-4 left-4 z-40 px-3 py-1.5 bg-black/40 border border-white/20 rounded-lg">
+        <span className="text-white/50 text-xs uppercase tracking-wider">Code: </span>
+        <span className="text-jeopardy-gold font-bold text-sm tracking-widest">{gameId}</span>
+      </div>
+
+      {/* Join Round button — top-right */}
+      <button
+        onClick={() => setShowJoinQR(true)}
+        className="absolute top-4 right-4 z-40 flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/60 border border-white/20 rounded-lg transition-all"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 17h3v3h-3zM14 14h3v3h-3z" />
+        </svg>
+        <span className="text-white/70 text-sm font-medium">Join Round</span>
+      </button>
+
+      {/* Join Round QR Modal */}
+      {showJoinQR && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowJoinQR(false)}
+        >
+          <div
+            className="bg-jeopardy-category rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-jeopardy-gold text-2xl font-bold mb-2">Join Game</h3>
+            <p className="text-white/60 text-sm mb-4">Scan to join mid-game</p>
+            <p className="text-jeopardy-gold text-4xl font-bold tracking-[0.2em] mb-4">{gameId}</p>
+            <QRCodeDisplay gameId={gameId} />
+            <button
+              onClick={() => setShowJoinQR(false)}
+              className="mt-6 w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-lg transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   // Final Jeopardy — display-only (no controls, no answer)
   if (
     gameState.status === "final_jeopardy" ||
     gameState.finalJeopardy.state !== "not_started"
   ) {
     return (
-      <FinalJeopardy
-        state={gameState.finalJeopardy.state}
-        category={gameState.finalJeopardy.category}
-        clueText={gameState.finalJeopardy.clueText}
-        isHost={false}
-        players={gameState.players}
-        submissions={gameState.finalJeopardy.submissions}
-        lastFinalResult={lastFinalResult}
-      />
+      <div className="relative">
+        {joinRoundOverlay}
+        <FinalJeopardy
+          state={gameState.finalJeopardy.state}
+          category={gameState.finalJeopardy.category}
+          clueText={gameState.finalJeopardy.clueText}
+          isHost={false}
+          players={gameState.players}
+          submissions={gameState.finalJeopardy.submissions}
+          lastFinalResult={lastFinalResult}
+        />
+      </div>
     );
   }
 
   // Finished
   if (gameState.status === "finished") {
     return (
-      <FinalJeopardy
-        state="results"
-        category=""
-        clueText=""
-        isHost={false}
-        players={gameState.players}
-        submissions={{}}
-      />
+      <div className="relative">
+        {joinRoundOverlay}
+        <FinalJeopardy
+          state="results"
+          category=""
+          clueText=""
+          isHost={false}
+          players={gameState.players}
+          submissions={{}}
+        />
+      </div>
     );
   }
 
@@ -133,7 +216,9 @@ export default function DisplayPage() {
       : undefined;
 
   return (
-    <div className="min-h-screen bg-jeopardy-blue flex flex-col">
+    <div className="min-h-screen bg-jeopardy-blue flex flex-col relative">
+      {joinRoundOverlay}
+
       {/* Board — always disabled (display-only) */}
       <div className="flex-1 flex items-center justify-center p-4">
         <Board
