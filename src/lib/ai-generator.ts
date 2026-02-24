@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AIBoardResponse, Board, GenerateBoardRequest, GenerateBoardResponse } from "./types.ts";
-import { validateBoard, type ClueValidationResult } from "./clue-validator";
+import { validateBoard, type ClueValidationResult } from "./clue-validator.ts";
 
 const client = new Anthropic();
 

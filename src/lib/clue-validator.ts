@@ -1,4 +1,4 @@
-import type { AIBoardResponse } from "./types";
+import type { AIBoardResponse } from "./types.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
