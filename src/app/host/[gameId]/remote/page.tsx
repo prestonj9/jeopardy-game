@@ -19,12 +19,20 @@ export default function HostRemotePage() {
   const [activeClueText, setActiveClueText] = useState<string | null>(null);
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
   const [activeClueIsDD, setActiveClueIsDD] = useState(false);
+  const [socketError, setSocketError] = useState<string | null>(null);
 
   // Join game room as host controller
   useEffect(() => {
     if (!socket || !isConnected) return;
 
+    console.log("[remote] emitting host:create_game for game:", gameId);
     socket.emit("host:create_game", { gameId });
+
+    // Listen for errors
+    socket.on("game:error", (data) => {
+      console.error("[remote] game:error:", data.message);
+      setSocketError(data.message);
+    });
 
     // Listen for host-only answer reveals
     socket.on("game:host_clue_answer", (data) => {
@@ -45,6 +53,7 @@ export default function HostRemotePage() {
     });
 
     return () => {
+      socket.off("game:error");
       socket.off("game:host_clue_answer");
       socket.off("game:clue_selected");
       socket.off("game:clue_complete");
@@ -94,10 +103,19 @@ export default function HostRemotePage() {
     return (
       <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-10 h-10 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-white text-base">
-            {isConnected ? "Loading game..." : "Connecting..."}
-          </p>
+          {socketError ? (
+            <>
+              <p className="text-red-400 text-xl mb-4">{socketError}</p>
+              <a href="/create" className="text-jeopardy-gold underline">Create a new game</a>
+            </>
+          ) : (
+            <>
+              <div className="animate-spin w-10 h-10 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-white text-base">
+                {isConnected ? "Loading game..." : "Connecting..."}
+              </p>
+            </>
+          )}
         </div>
       </div>
     );

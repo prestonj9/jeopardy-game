@@ -73,11 +73,14 @@ export function registerSocketHandlers(io: TypedServer): void {
 
     // ── Host: Create Game (from host phone remote) ────────────────────
     socket.on("host:create_game", (data) => {
+      console.log(`[host:create_game] gameId=${data.gameId} socketId=${socket.id}`);
       const game = getGame(data.gameId);
       if (!game) {
-        socket.emit("game:error", { message: "Game not found" });
+        console.log(`[host:create_game] Game NOT FOUND: ${data.gameId}`);
+        socket.emit("game:error", { message: `Game "${data.gameId}" not found. It may have expired — create a new one.` });
         return;
       }
+      console.log(`[host:create_game] Game found, sending state_sync`);
       game.hostSocketId = socket.id;
       socket.data.gameId = data.gameId;
       socket.data.isHost = true;
@@ -87,11 +90,14 @@ export function registerSocketHandlers(io: TypedServer): void {
 
     // ── Display: Join (passive viewer for TV/projector) ───────────────
     socket.on("display:join", (data) => {
+      console.log(`[display:join] gameId=${data.gameId} socketId=${socket.id}`);
       const game = getGame(data.gameId);
       if (!game) {
-        socket.emit("game:error", { message: "Game not found" });
+        console.log(`[display:join] Game NOT FOUND: ${data.gameId}`);
+        socket.emit("game:error", { message: `Game "${data.gameId}" not found. It may have expired — create a new one.` });
         return;
       }
+      console.log(`[display:join] Game found, sending state_sync`);
       game.displaySocketIds.add(socket.id);
       socket.data.gameId = data.gameId;
       socket.data.isDisplay = true;

@@ -18,12 +18,20 @@ export default function DisplayPage() {
   const [activeClueText, setActiveClueText] = useState<string | null>(null);
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
   const [activeClueIsDD, setActiveClueIsDD] = useState(false);
+  const [socketError, setSocketError] = useState<string | null>(null);
 
   // Join game room as display (passive viewer)
   useEffect(() => {
     if (!socket || !isConnected) return;
 
+    console.log("[display] emitting display:join for game:", gameId);
     socket.emit("display:join", { gameId });
+
+    // Listen for errors
+    socket.on("game:error", (data) => {
+      console.error("[display] game:error:", data.message);
+      setSocketError(data.message);
+    });
 
     // Listen for clue selection to store clue text
     socket.on("game:clue_selected", (data) => {
@@ -38,6 +46,7 @@ export default function DisplayPage() {
     });
 
     return () => {
+      socket.off("game:error");
       socket.off("game:clue_selected");
       socket.off("game:clue_complete");
     };
@@ -47,10 +56,19 @@ export default function DisplayPage() {
     return (
       <div className="min-h-screen bg-jeopardy-blue flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-white text-lg">
-            {isConnected ? "Loading game..." : "Connecting..."}
-          </p>
+          {socketError ? (
+            <>
+              <p className="text-red-400 text-xl mb-4">{socketError}</p>
+              <a href="/create" className="text-jeopardy-gold underline">Create a new game</a>
+            </>
+          ) : (
+            <>
+              <div className="animate-spin w-12 h-12 border-4 border-jeopardy-gold border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-white text-lg">
+                {isConnected ? "Loading game..." : "Connecting..."}
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
