@@ -1,5 +1,6 @@
 import Link from "next/link";
 import InteractiveHero from "@/components/InteractiveHero";
+import TypewriterTagline from "@/components/TypewriterTagline";
 
 export default function Home() {
   return (
@@ -10,11 +11,9 @@ export default function Home() {
       {/* Title */}
       <div className="relative z-10 text-center mb-12">
         <h1 className="text-6xl md:text-8xl font-bold text-text-primary tracking-tight mb-3">
-          JEOPARDY
+          JEOPARD<span className="inline-flex items-center justify-center rounded-lg px-2 md:px-3 py-0.5 md:py-1 ml-1 align-baseline border-2 border-accent text-gradient-accent">AI</span>
         </h1>
-        <p className="text-text-secondary text-lg md:text-xl">
-          AI-powered trivia for your next game night
-        </p>
+        <TypewriterTagline />
       </div>
 
       {/* Buttons */}

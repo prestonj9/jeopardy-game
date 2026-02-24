@@ -16,9 +16,9 @@ export default function Board({ board, onSelectClue, disabled }: BoardProps) {
         {board.categories.map((cat, ci) => (
           <div
             key={`cat-${ci}`}
-            className="bg-surface rounded-xl p-3 flex items-center justify-center min-h-[80px] border border-border"
+            className="bg-text-primary rounded-xl p-3 flex items-center justify-center min-h-[80px]"
           >
-            <span className="text-text-primary font-bold text-center text-sm md:text-base uppercase leading-tight">
+            <span className="text-white font-bold text-center text-sm md:text-base uppercase leading-tight">
               {cat.name}
             </span>
           </div>
@@ -42,7 +42,7 @@ export default function Board({ board, onSelectClue, disabled }: BoardProps) {
                 }`}
               >
                 {!isRevealed && (
-                  <span className="text-gradient-accent font-bold text-xl md:text-2xl lg:text-3xl">
+                  <span className="text-text-primary font-bold text-xl md:text-2xl lg:text-3xl">
                     ${clue.value}
                   </span>
                 )}

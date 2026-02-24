@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Jeopardy - AI Trivia Game",
-  description: "AI-powered Jeopardy-style trivia game",
+  title: "JeopardAI - AI Trivia Game",
+  description: "AI-powered trivia game for your next game night",
 };
 
 export const viewport: Viewport = {

@@ -16,9 +16,9 @@ export default function MiniBoard({ board, onSelectClue, disabled }: MiniBoardPr
         {board.categories.map((cat, ci) => (
           <div
             key={`cat-${ci}`}
-            className="bg-surface p-1.5 flex items-center justify-center min-h-[40px] rounded-lg"
+            className="bg-text-primary p-1.5 flex items-center justify-center min-h-[40px] rounded-lg"
           >
-            <span className="text-text-primary font-bold text-center text-[10px] leading-tight uppercase line-clamp-2">
+            <span className="text-white font-bold text-center text-[10px] leading-tight uppercase line-clamp-2">
               {cat.name}
             </span>
           </div>
@@ -42,7 +42,7 @@ export default function MiniBoard({ board, onSelectClue, disabled }: MiniBoardPr
                 }`}
               >
                 {!isRevealed && (
-                  <span className="text-accent font-bold text-xs">
+                  <span className="text-text-primary font-bold text-xs">
                     ${clue.value}
                   </span>
                 )}

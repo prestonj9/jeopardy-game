@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LOADING_MESSAGES } from "@/lib/constants";
+import InteractiveHero from "@/components/InteractiveHero";
 
 type Mode = "topic" | "upload";
 
@@ -86,9 +87,9 @@ export default function CreatePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="animate-spin w-12 h-12 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
+        <InteractiveHero />
+        <div className="text-center max-w-md relative z-10">
           <p
             key={messageIndex}
             className="text-text-secondary text-xl animate-[fadeIn_0.5s_ease-in] min-h-[3.5rem]"
