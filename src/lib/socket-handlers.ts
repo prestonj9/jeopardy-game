@@ -459,8 +459,13 @@ export function registerSocketHandlers(io: TypedServer): void {
       const wager = Math.max(5, Math.min(data.amount, maxWager));
 
       clue.dailyDoubleWager = wager;
-      clue.state = "showing_clue";
+      clue.state = "player_answering";
 
+      // Notify everyone that the DD player is now answering
+      io.to(game.id).emit("game:player_buzzed", {
+        playerId: player.id,
+        playerName: player.name,
+      });
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 
