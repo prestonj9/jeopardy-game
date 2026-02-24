@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { SerializablePlayer } from "@/lib/types";
 import QRCodeDisplay from "./QRCode";
+import { QRCodeSVG } from "qrcode.react";
 
 interface DisplayLobbyProps {
   gameId: string;
@@ -9,13 +11,26 @@ interface DisplayLobbyProps {
 }
 
 export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
+  const [showHostQR, setShowHostQR] = useState(false);
+
   const remoteUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/host/${gameId}/remote`
       : "";
 
   return (
-    <div className="min-h-screen bg-jeopardy-blue flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen bg-jeopardy-blue flex flex-col items-center justify-center p-8 relative">
+      {/* Host Remote button — top-right corner */}
+      <button
+        onClick={() => setShowHostQR(true)}
+        className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg transition-all"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        <span className="text-white/70 text-sm font-medium">Host Remote</span>
+      </button>
+
       {/* Game Code */}
       <p className="text-white/60 text-sm uppercase tracking-wider mb-2">
         Game Code
@@ -24,31 +39,12 @@ export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
         {gameId}
       </h2>
 
-      <div className="flex flex-col md:flex-row gap-12 items-start mb-12">
-        {/* Player QR */}
-        <div className="flex flex-col items-center">
-          <p className="text-white/80 text-lg font-bold uppercase tracking-wider mb-3">
-            Players — Scan to Join
-          </p>
-          <QRCodeDisplay gameId={gameId} />
-        </div>
-
-        {/* Host Remote QR */}
-        {remoteUrl && (
-          <div className="flex flex-col items-center">
-            <p className="text-white/80 text-lg font-bold uppercase tracking-wider mb-3">
-              Host Remote
-            </p>
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <p className="text-white/60 text-sm text-center max-w-[200px]">
-                Open on your phone to control the game:
-              </p>
-              <p className="text-jeopardy-gold text-xs text-center mt-2 break-all">
-                /host/{gameId}/remote
-              </p>
-            </div>
-          </div>
-        )}
+      {/* Player QR */}
+      <div className="flex flex-col items-center mb-12">
+        <p className="text-white/80 text-lg font-bold uppercase tracking-wider mb-3">
+          Scan to Join
+        </p>
+        <QRCodeDisplay gameId={gameId} />
       </div>
 
       {/* Player List */}
@@ -77,6 +73,37 @@ export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
           )}
         </div>
       </div>
+
+      {/* Host Remote QR Modal */}
+      {showHostQR && remoteUrl && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowHostQR(false)}
+        >
+          <div
+            className="bg-jeopardy-category rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-jeopardy-gold text-2xl font-bold mb-2">
+              Host Remote
+            </h3>
+            <p className="text-white/60 text-sm mb-6">
+              Scan with your phone to control the game
+            </p>
+
+            <div className="bg-white p-4 rounded-lg inline-block mb-6">
+              <QRCodeSVG value={remoteUrl} size={200} />
+            </div>
+
+            <button
+              onClick={() => setShowHostQR(false)}
+              className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-lg transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
