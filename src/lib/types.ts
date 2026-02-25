@@ -84,6 +84,10 @@ export interface FinalJeopardyState {
   submissions: Map<string, { wager: number; answer: string }>;
 }
 
+// ── Countdown Type ────────────────────────────────────────────────────────────
+
+export type CountdownType = "reading" | "buzz_window" | "answer";
+
 export interface Game {
   id: string; // nanoid, 6 chars uppercase — also the join code
   hostSocketId: string;
@@ -93,7 +97,9 @@ export interface Game {
   players: Map<string, Player>; // keyed by player.id
   currentClue: ActiveClue | null;
   buzzOrder: BuzzEntry[];
-  buzzDelayTimer: ReturnType<typeof setTimeout> | null; // server-side auto-buzz countdown
+  buzzDelayTimer: ReturnType<typeof setTimeout> | null; // 4s reading countdown
+  buzzWindowTimer: ReturnType<typeof setTimeout> | null; // 10s buzz-in window
+  answerTimer: ReturnType<typeof setTimeout> | null; // 5s answer countdown
   finalJeopardy: FinalJeopardyState;
   lastCorrectPlayerId: string | null;
   createdAt: number;
@@ -234,7 +240,7 @@ export interface ServerToClientEvents {
     finalScores: ScoreMap;
   }) => void;
   "game:finished": (data: { finalScores: ScoreMap }) => void;
-  "game:buzz_countdown": (data: { secondsRemaining: number }) => void;
+  "game:buzz_countdown": (data: { secondsRemaining: number; type: CountdownType; totalSeconds: number }) => void;
   "game:error": (data: { message: string }) => void;
   "game:state_sync": (data: SerializableGameState) => void;
   "game:host_clue_answer": (data: { correctResponse: string }) => void;

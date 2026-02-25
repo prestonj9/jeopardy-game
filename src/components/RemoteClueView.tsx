@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClueState } from "@/lib/types";
+import type { ClueState, CountdownType } from "@/lib/types";
 
 interface RemoteClueViewProps {
   clueText: string;
@@ -10,6 +10,8 @@ interface RemoteClueViewProps {
   answeringPlayerName?: string;
   isDailyDouble: boolean;
   buzzCountdown: number | null;
+  countdownType: CountdownType | null;
+  countdownTotalSeconds: number | null;
   onJudge: (correct: boolean) => void;
   onSkip: () => void;
 }
@@ -22,6 +24,8 @@ export default function RemoteClueView({
   answeringPlayerName,
   isDailyDouble,
   buzzCountdown,
+  countdownType,
+  countdownTotalSeconds,
   onJudge,
   onSkip,
 }: RemoteClueViewProps) {
@@ -68,15 +72,15 @@ export default function RemoteClueView({
 
       {/* State indicator + Controls */}
       <div className="flex-1 flex flex-col justify-end gap-3">
-        {/* Showing clue with countdown */}
-        {clueState === "showing_clue" && buzzCountdown !== null && buzzCountdown > 0 && (
-          <div className="text-center py-4">
-            <p className="text-text-secondary text-sm uppercase tracking-wider">
-              Buzzers open in
-            </p>
-            <span className="text-5xl font-black text-accent">
-              {buzzCountdown}
-            </span>
+        {/* Countdown progress bar — visible for all timer types */}
+        {buzzCountdown !== null && buzzCountdown > 0 && countdownTotalSeconds && (
+          <div className="py-2">
+            <div className="w-full h-1 bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-1000 ease-linear"
+                style={{ width: `${(buzzCountdown / countdownTotalSeconds) * 100}%` }}
+              />
+            </div>
           </div>
         )}
 
@@ -87,7 +91,7 @@ export default function RemoteClueView({
           </div>
         )}
 
-        {/* Buzzers open */}
+        {/* Buzzers open — with or without countdown */}
         {clueState === "buzzing_open" && (
           <div className="text-center py-4">
             <div className="flex items-center justify-center gap-2">
@@ -99,7 +103,7 @@ export default function RemoteClueView({
           </div>
         )}
 
-        {/* Player answering — show name + judge buttons */}
+        {/* Player answering — show name + judge buttons + Time's Up */}
         {clueState === "player_answering" && answeringPlayerName && (
           <div className="space-y-3">
             <div className="text-center">
@@ -110,6 +114,15 @@ export default function RemoteClueView({
                 {answeringPlayerName}
               </p>
             </div>
+
+            {/* Time's Up indicator when answer timer expires */}
+            {countdownType === "answer" && buzzCountdown === 0 && (
+              <div className="text-center py-2">
+                <p className="text-danger text-lg font-bold animate-pulse">
+                  Time&apos;s Up!
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button

@@ -32,6 +32,8 @@ type TypedSocket = Socket<
 >;
 
 const BUZZ_DELAY_SECONDS = 4;
+const BUZZ_WINDOW_SECONDS = 10;
+const ANSWER_SECONDS = 5;
 
 /** Clear any running buzz delay timer for a game */
 function clearBuzzTimer(game: Game): void {
@@ -41,16 +43,44 @@ function clearBuzzTimer(game: Game): void {
   }
 }
 
+function clearBuzzWindowTimer(game: Game): void {
+  if (game.buzzWindowTimer) {
+    clearTimeout(game.buzzWindowTimer);
+    game.buzzWindowTimer = null;
+  }
+}
+
+function clearAnswerTimer(game: Game): void {
+  if (game.answerTimer) {
+    clearTimeout(game.answerTimer);
+    game.answerTimer = null;
+  }
+}
+
+function clearAllTimers(game: Game): void {
+  clearBuzzTimer(game);
+  clearBuzzWindowTimer(game);
+  clearAnswerTimer(game);
+}
+
 /** Start a countdown that auto-opens buzzers after BUZZ_DELAY_SECONDS */
 function startBuzzCountdown(io: TypedServer, game: Game): void {
   let countdown = BUZZ_DELAY_SECONDS;
 
-  io.to(game.id).emit("game:buzz_countdown", { secondsRemaining: countdown });
+  io.to(game.id).emit("game:buzz_countdown", {
+    secondsRemaining: countdown,
+    type: "reading",
+    totalSeconds: BUZZ_DELAY_SECONDS,
+  });
 
   const tick = () => {
     countdown--;
     if (countdown > 0) {
-      io.to(game.id).emit("game:buzz_countdown", { secondsRemaining: countdown });
+      io.to(game.id).emit("game:buzz_countdown", {
+        secondsRemaining: countdown,
+        type: "reading",
+        totalSeconds: BUZZ_DELAY_SECONDS,
+      });
       game.buzzDelayTimer = setTimeout(tick, 1000);
     } else {
       // Time's up — open buzzers
@@ -58,15 +88,96 @@ function startBuzzCountdown(io: TypedServer, game: Game): void {
         game.currentClue.state = "buzzing_open";
         game.currentClue.buzzWindowOpenedAt = Date.now();
         game.buzzOrder = [];
-        io.to(game.id).emit("game:buzz_countdown", { secondsRemaining: 0 });
+        io.to(game.id).emit("game:buzz_countdown", {
+          secondsRemaining: 0,
+          type: "reading",
+          totalSeconds: BUZZ_DELAY_SECONDS,
+        });
         io.to(game.id).emit("game:buzzing_open");
         io.to(game.id).emit("game:state_sync", serializeGameState(game));
+
+        // Start the 10s buzz window timer
+        startBuzzWindowCountdown(io, game);
       }
       game.buzzDelayTimer = null;
     }
   };
 
   game.buzzDelayTimer = setTimeout(tick, 1000);
+}
+
+/** 10s window for players to buzz in. On expiry: auto-close clue + reveal answer. */
+function startBuzzWindowCountdown(io: TypedServer, game: Game): void {
+  let countdown = BUZZ_WINDOW_SECONDS;
+
+  io.to(game.id).emit("game:buzz_countdown", {
+    secondsRemaining: countdown,
+    type: "buzz_window",
+    totalSeconds: BUZZ_WINDOW_SECONDS,
+  });
+
+  const tick = () => {
+    countdown--;
+    if (countdown > 0) {
+      io.to(game.id).emit("game:buzz_countdown", {
+        secondsRemaining: countdown,
+        type: "buzz_window",
+        totalSeconds: BUZZ_WINDOW_SECONDS,
+      });
+      game.buzzWindowTimer = setTimeout(tick, 1000);
+    } else {
+      // Nobody buzzed — auto-close clue and reveal answer (same as Skip)
+      game.buzzWindowTimer = null;
+      io.to(game.id).emit("game:buzz_countdown", {
+        secondsRemaining: 0,
+        type: "buzz_window",
+        totalSeconds: BUZZ_WINDOW_SECONDS,
+      });
+
+      if (game.currentClue) {
+        const clueData =
+          game.board.categories[game.currentClue.categoryIndex].clues[
+            game.currentClue.clueIndex
+          ];
+        clueData.isRevealed = true;
+        const correctResponse = clueData.correctResponse;
+        game.currentClue = null;
+
+        io.to(game.id).emit("game:clue_complete", { correctResponse });
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+      }
+    }
+  };
+
+  game.buzzWindowTimer = setTimeout(tick, 1000);
+}
+
+/** 5s answer timer. On expiry: emit "Time's Up" signal (no auto-judging). */
+function startAnswerCountdown(io: TypedServer, game: Game): void {
+  let countdown = ANSWER_SECONDS;
+
+  io.to(game.id).emit("game:buzz_countdown", {
+    secondsRemaining: countdown,
+    type: "answer",
+    totalSeconds: ANSWER_SECONDS,
+  });
+
+  const tick = () => {
+    countdown--;
+    io.to(game.id).emit("game:buzz_countdown", {
+      secondsRemaining: countdown,
+      type: "answer",
+      totalSeconds: ANSWER_SECONDS,
+    });
+    if (countdown > 0) {
+      game.answerTimer = setTimeout(tick, 1000);
+    } else {
+      // Time's up — just signal it, host still judges manually
+      game.answerTimer = null;
+    }
+  };
+
+  game.answerTimer = setTimeout(tick, 1000);
 }
 
 export function registerSocketHandlers(io: TypedServer): void {
@@ -198,8 +309,8 @@ export function registerSocketHandlers(io: TypedServer): void {
       if (!game.currentClue || game.currentClue.state !== "player_answering")
         return;
 
-      // Clear any running buzz timer
-      clearBuzzTimer(game);
+      // Clear all running timers
+      clearAllTimers(game);
 
       const clue = game.currentClue;
       const player = game.players.get(clue.answeringPlayerId!);
@@ -259,10 +370,11 @@ export function registerSocketHandlers(io: TypedServer): void {
           });
 
           if (canStillBuzz.length > 0) {
-            // Re-open buzzers immediately (no new countdown — audience already read the clue)
+            // Re-open buzzers with a fresh 10s buzz window
             clue.state = "buzzing_open";
             game.buzzOrder = [];
             io.to(game.id).emit("game:buzzing_open");
+            startBuzzWindowCountdown(io, game);
           } else {
             clueData.isRevealed = true;
             game.currentClue = null;
@@ -284,8 +396,8 @@ export function registerSocketHandlers(io: TypedServer): void {
 
       if (!game.currentClue) return;
 
-      // Clear any running buzz timer
-      clearBuzzTimer(game);
+      // Clear all running timers
+      clearAllTimers(game);
 
       const clueData =
         game.board.categories[game.currentClue.categoryIndex].clues[
@@ -501,10 +613,13 @@ export function registerSocketHandlers(io: TypedServer): void {
       if (game.buzzOrder.length === 1) {
         clue.state = "player_answering";
         clue.answeringPlayerId = player.id;
+        clearBuzzWindowTimer(game);
         io.to(game.id).emit("game:player_buzzed", {
           playerId: player.id,
           playerName: player.name,
         });
+        startAnswerCountdown(io, game);
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
       }
     });
 
@@ -529,6 +644,7 @@ export function registerSocketHandlers(io: TypedServer): void {
         playerId: player.id,
         playerName: player.name,
       });
+      startAnswerCountdown(io, game);
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 

@@ -8,6 +8,7 @@ import type {
   ScoreMap,
   FinalState,
   SerializablePlayer,
+  CountdownType,
 } from "@/lib/types";
 
 type GameAction =
@@ -56,7 +57,7 @@ type GameAction =
       };
     }
   | { type: "GAME_FINISHED"; finalScores: ScoreMap }
-  | { type: "BUZZ_COUNTDOWN"; secondsRemaining: number }
+  | { type: "BUZZ_COUNTDOWN"; secondsRemaining: number; countdownType: CountdownType; totalSeconds: number }
   | { type: "NEW_ROUND_LOADING" };
 
 interface GameUIState {
@@ -74,6 +75,8 @@ interface GameUIState {
     answer: string;
   } | null;
   buzzCountdown: number | null;
+  countdownType: CountdownType | null;
+  countdownTotalSeconds: number | null;
   isNewRoundLoading: boolean;
 }
 
@@ -157,6 +160,8 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
       return {
         ...state,
         buzzCountdown: action.secondsRemaining,
+        countdownType: action.countdownType,
+        countdownTotalSeconds: action.totalSeconds,
       };
 
     case "BUZZING_OPEN":
@@ -164,6 +169,8 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
       return {
         ...state,
         buzzCountdown: null,
+        countdownType: null,
+        countdownTotalSeconds: null,
         gameState: {
           ...state.gameState,
           currentClue: {
@@ -224,6 +231,8 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
       return {
         ...state,
         buzzCountdown: null,
+        countdownType: null,
+        countdownTotalSeconds: null,
         lastCorrectResponse: action.correctResponse,
         gameState: {
           ...state.gameState,
@@ -322,6 +331,8 @@ const initialState: GameUIState = {
   lastCorrectResponse: null,
   lastFinalResult: null,
   buzzCountdown: null,
+  countdownType: null,
+  countdownTotalSeconds: null,
   isNewRoundLoading: false,
 };
 
@@ -379,8 +390,8 @@ export function useGameState(socket: TypedSocket | null) {
       }) => dispatch({ type: "FINAL_JUDGE_RESULT", data }),
       "game:finished": (data: { finalScores: ScoreMap }) =>
         dispatch({ type: "GAME_FINISHED", finalScores: data.finalScores }),
-      "game:buzz_countdown": (data: { secondsRemaining: number }) =>
-        dispatch({ type: "BUZZ_COUNTDOWN", secondsRemaining: data.secondsRemaining }),
+      "game:buzz_countdown": (data: { secondsRemaining: number; type: CountdownType; totalSeconds: number }) =>
+        dispatch({ type: "BUZZ_COUNTDOWN", secondsRemaining: data.secondsRemaining, countdownType: data.type, totalSeconds: data.totalSeconds }),
       "game:new_round_loading": () =>
         dispatch({ type: "NEW_ROUND_LOADING" }),
     };

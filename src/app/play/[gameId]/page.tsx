@@ -17,7 +17,7 @@ export default function PlayerGamePage() {
   const gameId = params.gameId as string;
   const playerName = searchParams.get("name") || "Player";
   const { socket, isConnected } = useSocket();
-  const { gameState, lastJudgeResult, lastCorrectResponse, lastFinalResult, buzzCountdown, isNewRoundLoading } =
+  const { gameState, lastJudgeResult, lastCorrectResponse, lastFinalResult, buzzCountdown, countdownTotalSeconds, isNewRoundLoading } =
     useGameState(socket);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -371,7 +371,7 @@ export default function PlayerGamePage() {
             )}
 
             {/* Buzz button */}
-            <BuzzButton state={buzzState} onBuzz={handleBuzz} countdown={buzzCountdown} />
+            <BuzzButton state={buzzState} onBuzz={handleBuzz} countdown={buzzCountdown} countdownTotalSeconds={countdownTotalSeconds} />
           </div>
         )}
       </div>

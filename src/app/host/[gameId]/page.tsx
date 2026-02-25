@@ -16,7 +16,7 @@ export default function DisplayPage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const { socket, isConnected } = useSocket();
-  const { gameState, lastFinalResult, buzzCountdown, isNewRoundLoading } = useGameState(socket);
+  const { gameState, lastFinalResult, buzzCountdown, countdownType, countdownTotalSeconds, isNewRoundLoading } = useGameState(socket);
   const [activeClueText, setActiveClueText] = useState<string | null>(null);
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
   const [activeClueIsDD, setActiveClueIsDD] = useState(false);
@@ -246,6 +246,8 @@ export default function DisplayPage() {
           isDailyDouble={activeClueIsDD}
           dailyDoublePlayerName={ddPlayerName}
           buzzCountdown={buzzCountdown}
+          countdownType={countdownType}
+          countdownTotalSeconds={countdownTotalSeconds}
         />
       )}
     </div>

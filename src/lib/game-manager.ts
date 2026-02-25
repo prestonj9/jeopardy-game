@@ -57,6 +57,8 @@ export function createGame(
     currentClue: null,
     buzzOrder: [],
     buzzDelayTimer: null,
+    buzzWindowTimer: null,
+    answerTimer: null,
     finalJeopardy: {
       category: finalJeopardy.category,
       clueText: finalJeopardy.clueText,
@@ -164,6 +166,14 @@ export function resetGameForNewRound(
   if (game.buzzDelayTimer) {
     clearTimeout(game.buzzDelayTimer);
     game.buzzDelayTimer = null;
+  }
+  if (game.buzzWindowTimer) {
+    clearTimeout(game.buzzWindowTimer);
+    game.buzzWindowTimer = null;
+  }
+  if (game.answerTimer) {
+    clearTimeout(game.answerTimer);
+    game.answerTimer = null;
   }
 
   game.finalJeopardy = {

@@ -15,7 +15,7 @@ export default function HostRemotePage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const { socket, isConnected } = useSocket();
-  const { gameState, lastFinalResult, buzzCountdown, isNewRoundLoading } = useGameState(socket);
+  const { gameState, lastFinalResult, buzzCountdown, countdownType, countdownTotalSeconds, isNewRoundLoading } = useGameState(socket);
   const [correctResponse, setCorrectResponse] = useState<string | null>(null);
   const [activeClueText, setActiveClueText] = useState<string | null>(null);
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
@@ -281,6 +281,8 @@ export default function HostRemotePage() {
             answeringPlayerName={answeringPlayerName}
             isDailyDouble={activeClueIsDD}
             buzzCountdown={buzzCountdown}
+            countdownType={countdownType}
+            countdownTotalSeconds={countdownTotalSeconds}
             onJudge={handleJudge}
             onSkip={handleSkip}
           />
