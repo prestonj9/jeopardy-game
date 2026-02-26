@@ -11,6 +11,7 @@ import Scoreboard from "@/components/Scoreboard";
 import DisplayLobby from "@/components/DisplayLobby";
 import FinalJeopardy from "@/components/FinalJeopardy";
 import QRCodeDisplay from "@/components/QRCode";
+import GameMenu from "@/components/GameMenu";
 import { LOADING_MESSAGES } from "@/lib/constants";
 
 export default function DisplayPage() {
@@ -133,43 +134,15 @@ export default function DisplayPage() {
     );
   }
 
-  // Join Round overlay — reusable across active/final/finished states
-  const joinRoundOverlay = (
+  // Game menu + QR modal — reusable across active/final/finished states
+  const gameOverlay = (
     <>
-      {/* Game code badge — top-left */}
-      <div className="absolute top-4 left-4 z-40 px-3 py-1.5 bg-surface border border-border rounded-lg">
-        <span className="text-text-secondary text-xs uppercase tracking-wider">Code: </span>
-        <span className="text-accent font-bold text-sm tracking-widest">{gameId}</span>
-      </div>
-
-      {/* Mute toggle + Join Round — top-right */}
-      <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
-      <button
-        onClick={() => setIsMuted((m) => !m)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-surface-hover border border-border rounded-lg transition-all"
-        title={isMuted ? "Unmute sounds" : "Mute sounds"}
-      >
-        {isMuted ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-          </svg>
-        )}
-      </button>
-      <button
-        onClick={() => setShowJoinQR(true)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surface-hover border border-border rounded-lg transition-all"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 17h3v3h-3zM14 14h3v3h-3z" />
-        </svg>
-        <span className="text-text-secondary text-sm font-medium">Join Round</span>
-      </button>
-      </div>
+      <GameMenu
+        gameId={gameId}
+        isMuted={isMuted}
+        onToggleMute={() => setIsMuted((m) => !m)}
+        onShowJoinQR={() => setShowJoinQR(true)}
+      />
 
       {/* Join Round QR Modal */}
       {showJoinQR && (
@@ -204,7 +177,7 @@ export default function DisplayPage() {
   ) {
     return (
       <div className="relative">
-        {joinRoundOverlay}
+        {gameOverlay}
         {audioPrompt}
         <FinalJeopardy
           state={gameState.finalJeopardy.state}
@@ -223,7 +196,7 @@ export default function DisplayPage() {
   if (gameState.status === "finished") {
     return (
       <div className="relative">
-        {joinRoundOverlay}
+        {gameOverlay}
         {audioPrompt}
         <FinalJeopardy
           state="results"
@@ -255,7 +228,7 @@ export default function DisplayPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col relative">
-      {joinRoundOverlay}
+      {gameOverlay}
       {audioPrompt}
 
       {/* Board — always disabled (display-only) */}

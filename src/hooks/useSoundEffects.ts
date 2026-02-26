@@ -38,20 +38,22 @@ export function useSoundEffects(
 
   // Pre-loaded audio buffers for instant playback
   const audioBuffersRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const buffersLoadedRef = useRef(false);
 
   const unlockAudio = useCallback(() => {
     if (audioUnlockedRef.current) return;
     try {
       const ctx = new AudioContext();
-      // Create and play a tiny silent buffer to unlock
-      const buffer = ctx.createBuffer(1, 1, 22050);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
+
+      // Resume the context — Chrome starts it in "suspended" state
+      ctx.resume().then(() => {
+        console.log("[sound] AudioContext resumed, state:", ctx.state);
+      });
+
       audioCtxRef.current = ctx;
       audioUnlockedRef.current = true;
       setAudioUnlocked(true);
+      console.log("[sound] Audio unlocked, AudioContext state:", ctx.state);
 
       // Pre-load all sound files into AudioBuffers for reliable playback
       const files = [
@@ -62,14 +64,29 @@ export function useSoundEffects(
         "times-up.wav",
         "final-jeopardy.wav",
       ];
+
+      let loaded = 0;
       for (const file of files) {
         fetch(`/sounds/${file}`)
-          .then((r) => r.arrayBuffer())
+          .then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status} for ${file}`);
+            return r.arrayBuffer();
+          })
           .then((buf) => ctx.decodeAudioData(buf))
-          .then((decoded) => audioBuffersRef.current.set(file, decoded))
-          .catch(() => {});
+          .then((decoded) => {
+            audioBuffersRef.current.set(file, decoded);
+            loaded++;
+            if (loaded === files.length) {
+              buffersLoadedRef.current = true;
+              console.log("[sound] All", files.length, "sound buffers loaded");
+            }
+          })
+          .catch((err) => {
+            console.warn("[sound] Failed to load", file, err);
+          });
       }
-    } catch {
+    } catch (err) {
+      console.warn("[sound] AudioContext failed, using HTMLAudioElement fallback", err);
       // Fallback: just mark as unlocked so HTMLAudioElement attempts work
       audioUnlockedRef.current = true;
       setAudioUnlocked(true);
@@ -101,21 +118,33 @@ export function useSoundEffects(
 
     // Try AudioContext playback first (more reliable after unlock)
     const ctx = audioCtxRef.current;
-    const buffer = audioBuffersRef.current.get(file);
-    if (ctx && buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
-      return;
+    if (ctx) {
+      // Ensure context is running (may have been suspended by browser)
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
+
+      const buffer = audioBuffersRef.current.get(file);
+      if (buffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        console.log("[sound] Playing via AudioContext:", file);
+        return;
+      } else {
+        console.log("[sound] Buffer not loaded yet for", file, "— using fallback");
+      }
     }
 
     // Fallback to HTMLAudioElement
     try {
       const audio = new Audio(`/sounds/${file}`);
-      audio.play().catch(() => {});
-    } catch {
-      // Ignore
+      audio.play()
+        .then(() => console.log("[sound] Playing via HTMLAudio:", file))
+        .catch((err) => console.warn("[sound] HTMLAudio failed for", file, err));
+    } catch (err) {
+      console.warn("[sound] Could not create Audio element for", file, err);
     }
   }
 
@@ -182,7 +211,9 @@ export function useSoundEffects(
         try {
           const audio = new Audio("/sounds/final-jeopardy.wav");
           audio.loop = true;
-          audio.play().catch(() => {});
+          audio.play().catch((err) => {
+            console.warn("[sound] Final Jeopardy music failed:", err);
+          });
           finalMusicRef.current = audio;
         } catch {
           // Ignore
