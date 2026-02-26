@@ -13,6 +13,7 @@ Rules:
 - Each clue must be a declarative statement (the "answer" in Jeopardy terms)
 - Each correctResponse must be phrased as a question: "What is..." or "Who is..."
 - Clues must be unambiguous with one clear correct response
+- Every correctResponse must be unique — no two clues on the board should share the same answer
 - Generate 1 Final Jeopardy clue with its own unique category name
 - Assign exactly one Daily Double to a non-$200 clue (clueIndex 1-4)
 - CRITICAL: The clueText must NEVER contain the answer. The correctResponse word(s) must not appear anywhere in the clueText, even partially. The player needs to GUESS the answer — if it's in the clue, the question is broken.
@@ -21,7 +22,31 @@ Rules:
   - GOOD: clueText "This City of Light is home to the Eiffel Tower" with correctResponse "What is Paris?" — answer not revealed
   - GOOD: clueText "This element makes up about 21% of Earth's atmosphere" with correctResponse "What is Oxygen?" — answer not revealed
 - Use descriptive language, context clues, and indirect references instead of naming the answer.
-- Before outputting, review every clue to verify the answer does not appear in the clue text. Rewrite any that do.
+
+CLUE-WRITING CRAFT:
+- Write clues as declarative statements in the style of real Jeopardy — describe the answer without revealing it.
+- Layer 2-3 converging hints per clue so the answer is uniquely determined. A single vague descriptor is too easy to misinterpret; multiple intersecting clues narrow to exactly one answer.
+  - WEAK: "This European country is known for wine" — too many possible answers
+  - STRONG: "This European country, home to the Parthenon, hosted the first modern Olympics in 1896" — multiple hints converge on Greece
+- Avoid starting every clue with "This..." — vary your sentence structure. Use constructions like "In 1969, this astronaut...", "Known as the 'Father of...'", "Located along the Danube, this capital city...", etc.
+- Never use the phrasing "This [answer]..." where the blank IS the answer. The word after "This" should be a category noun (person, country, element, author), not the answer itself.
+
+DIFFICULTY CALIBRATION:
+- $200: Everyday knowledge, pop culture, well-known facts. Most players should get these.
+- $400: Slightly more specific. Requires knowing a detail beyond the most obvious.
+- $600: Moderate difficulty. Requires solid general knowledge or a second-level association.
+- $800: Challenging. Requires deeper knowledge — specific dates, lesser-known works, technical details.
+- $1000: Expert-level. Requires specialized knowledge, obscure connections, or multi-step reasoning.
+
+ACCURACY REQUIREMENTS:
+- Accuracy is paramount. Only state facts you are highly confident about.
+- If you are unsure about a specific date, number, statistic, or attribution, choose a different fact you ARE certain about. A correct simple clue is always better than an impressive wrong one.
+- Double-check names, dates, and numerical claims during your thinking process before including them.
+- Do not guess at specific measurements, population figures, or record-holding statistics unless you are certain.
+- For each clue, ask yourself: "Am I confident this is factually correct?" If not, pick a different angle.
+- When given source material (upload mode), stay faithful to the provided content and do not introduce outside facts that could be wrong.
+
+- Before outputting, review every clue to verify: (1) the answer does not appear in the clue text, and (2) each fact stated is accurate. Rewrite any that fail either check.
 
 STRUCTURED CONTENT DETECTION:
 When given source material, first check if it contains pre-structured Jeopardy content:
@@ -81,6 +106,16 @@ function parseResponse(text: string): AIBoardResponse {
   return JSON.parse(cleaned) as AIBoardResponse;
 }
 
+/**
+ * Extracts the text content from a Claude API response.
+ * Handles both standard responses and extended-thinking responses
+ * where content[] contains thinking blocks before the text block.
+ */
+function extractTextFromResponse(content: Anthropic.ContentBlock[]): string {
+  const textBlock = content.find((block) => block.type === "text");
+  return textBlock && textBlock.type === "text" ? textBlock.text : "";
+}
+
 function transformToBoard(data: AIBoardResponse): GenerateBoardResponse {
   const board: Board = {
     categories: data.categories.map((cat) => ({
@@ -114,6 +149,8 @@ Rules:
 - The replacement clueText must NOT contain any word from the correctResponse
 - Keep the same correctResponse (answer) — only rewrite the clueText
 - Use descriptive language, context clues, and indirect references
+- Accuracy is paramount — only use facts you are highly confident about
+- If unsure about a specific detail, use a different factual angle you ARE certain about
 - Respond with ONLY valid JSON — no markdown, no explanation, no code fences`;
 
 interface FixedClue {
@@ -154,13 +191,13 @@ Use categoryIndex -1 and clueIndex -1 for Final Jeopardy.`;
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 2048,
+      max_tokens: 8000,
+      thinking: { type: "enabled", budget_tokens: 5000 },
       system: FIX_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
     });
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
+    const text = extractTextFromResponse(response.content);
     const cleaned = text
       .replace(/```json?\n?/g, "")
       .replace(/```/g, "")
@@ -213,13 +250,13 @@ export async function generateBoard(
     try {
       const response = await client.messages.create({
         model: "claude-sonnet-4-5-20250929",
-        max_tokens: 4096,
+        max_tokens: 16000,
+        thinking: { type: "enabled", budget_tokens: 10000 },
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userMessage }],
       });
 
-      const text =
-        response.content[0].type === "text" ? response.content[0].text : "";
+      const text = extractTextFromResponse(response.content);
       parsed = parseResponse(text);
       break;
     } catch (err) {

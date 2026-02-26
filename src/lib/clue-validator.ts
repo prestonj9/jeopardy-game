@@ -14,6 +14,7 @@ export interface ClueValidationResult {
 // ── Stop words to skip during token matching ─────────────────────────────────
 
 const STOP_WORDS = new Set([
+  // Common function words
   "the",
   "and",
   "for",
@@ -54,6 +55,40 @@ const STOP_WORDS = new Set([
   "between",
   "under",
   "other",
+  // Generic descriptor nouns — too common to be meaningful answer leaks
+  // when they appear as individual tokens in multi-word answers
+  // (e.g. "battle" in "Battle of Gettysburg", "treaty" in "Treaty of Ghent")
+  "battle",
+  "treaty",
+  "party",
+  "river",
+  "mount",
+  "mountain",
+  "lake",
+  "island",
+  "fort",
+  "harbor",
+  "valley",
+  "falls",
+  "bridge",
+  "castle",
+  "tower",
+  "park",
+  "saint",
+  "point",
+  "creek",
+  "cape",
+  "gulf",
+  "ocean",
+  "city",
+  "king",
+  "queen",
+  "prince",
+  "general",
+  "north",
+  "south",
+  "east",
+  "west",
 ]);
 
 // ── Answer Extraction ────────────────────────────────────────────────────────
