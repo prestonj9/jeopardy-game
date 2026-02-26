@@ -19,7 +19,7 @@ export default function DisplayPage() {
   const { socket, isConnected } = useSocket();
   const { gameState, lastJudgeResult, lastFinalResult, buzzCountdown, countdownType, countdownTotalSeconds, isNewRoundLoading, revealedAnswer } = useGameState(socket);
   const [isMuted, setIsMuted] = useState(false);
-  useSoundEffects(gameState, buzzCountdown, lastJudgeResult, isMuted);
+  const { audioUnlocked } = useSoundEffects(gameState, buzzCountdown, lastJudgeResult, isMuted);
   const [activeClueText, setActiveClueText] = useState<string | null>(null);
   const [activeClueValue, setActiveClueValue] = useState<number>(0);
   const [activeClueIsDD, setActiveClueIsDD] = useState(false);
@@ -108,13 +108,28 @@ export default function DisplayPage() {
     );
   }
 
+  // Audio unlock prompt — shown until someone clicks the display page once
+  const audioPrompt = !audioUnlocked && !isMuted && (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-pulse">
+      <div className="flex items-center gap-2 px-5 py-3 bg-accent text-white rounded-full shadow-lg cursor-pointer select-none">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+        <span className="text-sm font-semibold">Click anywhere to enable sound effects</span>
+      </div>
+    </div>
+  );
+
   // Lobby — display-only (no Start button)
   if (gameState.status === "lobby") {
     return (
-      <DisplayLobby
-        gameId={gameId}
-        players={gameState.players}
-      />
+      <div className="relative">
+        {audioPrompt}
+        <DisplayLobby
+          gameId={gameId}
+          players={gameState.players}
+        />
+      </div>
     );
   }
 
@@ -190,6 +205,7 @@ export default function DisplayPage() {
     return (
       <div className="relative">
         {joinRoundOverlay}
+        {audioPrompt}
         <FinalJeopardy
           state={gameState.finalJeopardy.state}
           category={gameState.finalJeopardy.category}
@@ -208,6 +224,7 @@ export default function DisplayPage() {
     return (
       <div className="relative">
         {joinRoundOverlay}
+        {audioPrompt}
         <FinalJeopardy
           state="results"
           category=""
@@ -239,6 +256,7 @@ export default function DisplayPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col relative">
       {joinRoundOverlay}
+      {audioPrompt}
 
       {/* Board — always disabled (display-only) */}
       <div className="flex-1 flex items-center justify-center p-4">

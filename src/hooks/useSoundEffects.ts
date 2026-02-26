@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type { SerializableGameState } from "@/lib/types";
 
 /**
  * Plays game-show sound effects on the TV display in response to state changes.
  *
  * Sound files live in /public/sounds/ — swap any file to change the sound.
- * Sounds fail silently if the browser blocks autoplay (no user interaction yet).
+ *
+ * Browsers block audio until the user interacts with the page. This hook
+ * returns `audioUnlocked` (boolean) so the display page can show a prompt
+ * asking someone to click the screen once.
  */
 export function useSoundEffects(
   gameState: SerializableGameState | null,
@@ -28,16 +31,91 @@ export function useSoundEffects(
   // Ref for looping Final Jeopardy music
   const finalMusicRef = useRef<HTMLAudioElement | null>(null);
 
-  /** Play a one-shot sound */
+  // ── Audio unlock via AudioContext ────────────────────────────
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioUnlockedRef = useRef(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
+  // Pre-loaded audio buffers for instant playback
+  const audioBuffersRef = useRef<Map<string, AudioBuffer>>(new Map());
+
+  const unlockAudio = useCallback(() => {
+    if (audioUnlockedRef.current) return;
+    try {
+      const ctx = new AudioContext();
+      // Create and play a tiny silent buffer to unlock
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      audioCtxRef.current = ctx;
+      audioUnlockedRef.current = true;
+      setAudioUnlocked(true);
+
+      // Pre-load all sound files into AudioBuffers for reliable playback
+      const files = [
+        "buzz-in.wav",
+        "correct.wav",
+        "wrong.wav",
+        "daily-double.wav",
+        "times-up.wav",
+        "final-jeopardy.wav",
+      ];
+      for (const file of files) {
+        fetch(`/sounds/${file}`)
+          .then((r) => r.arrayBuffer())
+          .then((buf) => ctx.decodeAudioData(buf))
+          .then((decoded) => audioBuffersRef.current.set(file, decoded))
+          .catch(() => {});
+      }
+    } catch {
+      // Fallback: just mark as unlocked so HTMLAudioElement attempts work
+      audioUnlockedRef.current = true;
+      setAudioUnlocked(true);
+    }
+  }, []);
+
+  // Register a one-time click/touch handler on the document to unlock audio
+  useEffect(() => {
+    if (audioUnlockedRef.current) return;
+
+    const handler = () => {
+      unlockAudio();
+      document.removeEventListener("click", handler, true);
+      document.removeEventListener("touchstart", handler, true);
+    };
+
+    document.addEventListener("click", handler, true);
+    document.addEventListener("touchstart", handler, true);
+
+    return () => {
+      document.removeEventListener("click", handler, true);
+      document.removeEventListener("touchstart", handler, true);
+    };
+  }, [unlockAudio]);
+
+  /** Play a one-shot sound using AudioContext (preferred) or HTMLAudioElement (fallback) */
   function playSound(file: string) {
     if (mutedRef.current) return;
+
+    // Try AudioContext playback first (more reliable after unlock)
+    const ctx = audioCtxRef.current;
+    const buffer = audioBuffersRef.current.get(file);
+    if (ctx && buffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      return;
+    }
+
+    // Fallback to HTMLAudioElement
     try {
       const audio = new Audio(`/sounds/${file}`);
-      audio.play().catch(() => {
-        // Silently ignore autoplay restrictions
-      });
+      audio.play().catch(() => {});
     } catch {
-      // Ignore errors (e.g., SSR)
+      // Ignore
     }
   }
 
@@ -133,4 +211,6 @@ export function useSoundEffects(
       }
     };
   }, [gameState?.finalJeopardy?.state]);
+
+  return { unlockAudio, audioUnlocked };
 }
