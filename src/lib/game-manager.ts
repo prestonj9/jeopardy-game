@@ -219,6 +219,12 @@ export function serializeGameState(game: Game): SerializableGameState {
           playersWhoAttempted: Array.from(
             game.currentClue.playersWhoAttempted
           ),
+          revealedCorrectResponse:
+            game.currentClue.state === "answer_revealed"
+              ? game.board.categories[game.currentClue.categoryIndex].clues[
+                  game.currentClue.clueIndex
+                ].correctResponse
+              : undefined,
         }
       : null,
     buzzOrder: game.buzzOrder,

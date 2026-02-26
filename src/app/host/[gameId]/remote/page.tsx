@@ -86,6 +86,10 @@ export default function HostRemotePage() {
     socket?.emit("host:skip_clue");
   }, [socket]);
 
+  const handleRevealAnswer = useCallback(() => {
+    socket?.emit("host:reveal_answer");
+  }, [socket]);
+
   const handleStartFinal = useCallback(() => {
     socket?.emit("host:start_final");
   }, [socket]);
@@ -124,6 +128,13 @@ export default function HostRemotePage() {
     }, 3000);
     return () => clearInterval(interval);
   }, [isNewRoundLoading]);
+
+  // Haptic feedback when a player buzzes in
+  useEffect(() => {
+    if (gameState?.currentClue?.state === "player_answering") {
+      navigator.vibrate?.([100, 50, 100]);
+    }
+  }, [gameState?.currentClue?.state]);
 
   // ── Loading ──────────────────────────────────────────────────
   if (!gameState) {
@@ -285,6 +296,7 @@ export default function HostRemotePage() {
             countdownTotalSeconds={countdownTotalSeconds}
             onJudge={handleJudge}
             onSkip={handleSkip}
+            onRevealAnswer={handleRevealAnswer}
           />
         </div>
       ) : (

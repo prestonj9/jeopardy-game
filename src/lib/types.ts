@@ -15,6 +15,8 @@ export const ClueState = {
   BUZZING_OPEN: "buzzing_open",
   PLAYER_ANSWERING: "player_answering",
   DAILY_DOUBLE_WAGER: "daily_double_wager",
+  AWAITING_REVEAL: "awaiting_reveal",
+  ANSWER_REVEALED: "answer_revealed",
 } as const;
 export type ClueState = (typeof ClueState)[keyof typeof ClueState];
 
@@ -150,6 +152,7 @@ export interface SerializableGameState {
     answeringPlayerId: string | null;
     dailyDoubleWager: number | null;
     playersWhoAttempted: string[];
+    revealedCorrectResponse?: string;
   } | null;
   buzzOrder: BuzzEntry[];
   finalJeopardy: {
@@ -228,6 +231,7 @@ export interface ServerToClientEvents {
     clueComplete: boolean;
   }) => void;
   "game:clue_complete": (data: { correctResponse: string }) => void;
+  "game:answer_revealed": (data: { correctResponse: string }) => void;
   "game:final_started": (data: { category: string }) => void;
   "game:final_advanced": (data: { newState: FinalState }) => void;
   "game:final_clue": (data: { clueText: string }) => void;
@@ -259,6 +263,7 @@ export interface ClientToServerEvents {
   }) => void;
   "host:judge": (data: { correct: boolean }) => void;
   "host:skip_clue": () => void;
+  "host:reveal_answer": () => void;
   "host:start_final": () => void;
   "host:advance_final": () => void;
   "host:judge_final": (data: {

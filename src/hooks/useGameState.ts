@@ -42,6 +42,7 @@ type GameAction =
       };
     }
   | { type: "CLUE_COMPLETE"; correctResponse: string }
+  | { type: "ANSWER_REVEALED"; correctResponse: string }
   | { type: "FINAL_STARTED"; category: string }
   | { type: "FINAL_ADVANCED"; newState: FinalState }
   | { type: "FINAL_CLUE"; clueText: string }
@@ -78,12 +79,18 @@ interface GameUIState {
   countdownType: CountdownType | null;
   countdownTotalSeconds: number | null;
   isNewRoundLoading: boolean;
+  revealedAnswer: string | null;
 }
 
 function gameReducer(state: GameUIState, action: GameAction): GameUIState {
   switch (action.type) {
     case "SET_STATE":
-      return { ...state, gameState: action.state, isNewRoundLoading: false };
+      return {
+        ...state,
+        gameState: action.state,
+        isNewRoundLoading: false,
+        revealedAnswer: action.state.currentClue?.revealedCorrectResponse ?? state.revealedAnswer,
+      };
 
     case "PLAYER_JOINED":
       if (!state.gameState) return state;
@@ -141,6 +148,7 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
         ...state,
         lastJudgeResult: null,
         lastCorrectResponse: null,
+        revealedAnswer: null,
         gameState: {
           ...state.gameState,
           currentClue: {
@@ -226,6 +234,20 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
       }
       return updatedState;
 
+    case "ANSWER_REVEALED":
+      if (!state.gameState?.currentClue) return state;
+      return {
+        ...state,
+        revealedAnswer: action.correctResponse,
+        gameState: {
+          ...state.gameState,
+          currentClue: {
+            ...state.gameState.currentClue,
+            state: "answer_revealed",
+          },
+        },
+      };
+
     case "CLUE_COMPLETE":
       if (!state.gameState) return state;
       return {
@@ -234,6 +256,7 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
         countdownType: null,
         countdownTotalSeconds: null,
         lastCorrectResponse: action.correctResponse,
+        revealedAnswer: null,
         gameState: {
           ...state.gameState,
           currentClue: null,
@@ -334,6 +357,7 @@ const initialState: GameUIState = {
   countdownType: null,
   countdownTotalSeconds: null,
   isNewRoundLoading: false,
+  revealedAnswer: null,
 };
 
 export function useGameState(socket: TypedSocket | null) {
@@ -374,6 +398,8 @@ export function useGameState(socket: TypedSocket | null) {
       }) => dispatch({ type: "JUDGE_RESULT", data }),
       "game:clue_complete": (data: { correctResponse: string }) =>
         dispatch({ type: "CLUE_COMPLETE", correctResponse: data.correctResponse }),
+      "game:answer_revealed": (data: { correctResponse: string }) =>
+        dispatch({ type: "ANSWER_REVEALED", correctResponse: data.correctResponse }),
       "game:final_started": (data: { category: string }) =>
         dispatch({ type: "FINAL_STARTED", category: data.category }),
       "game:final_advanced": (data: { newState: FinalState }) =>

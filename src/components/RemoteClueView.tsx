@@ -14,6 +14,7 @@ interface RemoteClueViewProps {
   countdownTotalSeconds: number | null;
   onJudge: (correct: boolean) => void;
   onSkip: () => void;
+  onRevealAnswer: () => void;
 }
 
 export default function RemoteClueView({
@@ -28,6 +29,7 @@ export default function RemoteClueView({
   countdownTotalSeconds,
   onJudge,
   onSkip,
+  onRevealAnswer,
 }: RemoteClueViewProps) {
   return (
     <div className="flex flex-col gap-4 p-4 h-full">
@@ -141,8 +143,45 @@ export default function RemoteClueView({
           </div>
         )}
 
-        {/* Skip button — always available except when player is answering */}
-        {clueState !== "player_answering" && clueState !== "daily_double_wager" && (
+        {/* Awaiting reveal — host can reveal the answer */}
+        {clueState === "awaiting_reveal" && (
+          <div className="space-y-3">
+            <div className="text-center py-4">
+              <p className="text-text-secondary text-lg font-bold">
+                No one answered
+              </p>
+            </div>
+            <button
+              onClick={onRevealAnswer}
+              className="w-full py-5 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-xl hover:opacity-90 active:scale-95 transition-all"
+            >
+              Reveal Answer
+            </button>
+          </div>
+        )}
+
+        {/* Answer revealed — host can return to board */}
+        {clueState === "answer_revealed" && correctResponse && (
+          <div className="space-y-3">
+            <div className="text-center py-2">
+              <p className="text-accent/70 text-xs uppercase tracking-wider">
+                Correct Response
+              </p>
+              <p className="text-accent text-2xl font-bold">
+                {correctResponse}
+              </p>
+            </div>
+            <button
+              onClick={onSkip}
+              className="w-full py-5 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-xl hover:opacity-90 active:scale-95 transition-all"
+            >
+              Back to Board
+            </button>
+          </div>
+        )}
+
+        {/* Skip button — available during showing_clue, buzzing_open, and awaiting_reveal */}
+        {clueState !== "player_answering" && clueState !== "daily_double_wager" && clueState !== "answer_revealed" && (
           <button
             onClick={onSkip}
             className="w-full py-3 bg-surface text-text-primary font-bold rounded-xl hover:bg-surface-hover border border-border active:scale-95 transition-all"

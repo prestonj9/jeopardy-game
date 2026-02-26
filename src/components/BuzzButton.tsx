@@ -46,7 +46,7 @@ export default function BuzzButton({ state, onBuzz, countdown, countdownTotalSec
 
   return (
     <button
-      onClick={state === "active" ? onBuzz : undefined}
+      onClick={state === "active" ? () => { navigator.vibrate?.(50); onBuzz(); } : undefined}
       disabled={state !== "active"}
       className={`relative w-full min-h-[80px] rounded-full font-bold text-3xl transition-all active:scale-95 select-none overflow-hidden ${c.bg} ${c.textColor} ${c.cursor} ${c.animate}`}
       style={{ touchAction: "manipulation" }}

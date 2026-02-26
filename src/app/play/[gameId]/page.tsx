@@ -17,7 +17,7 @@ export default function PlayerGamePage() {
   const gameId = params.gameId as string;
   const playerName = searchParams.get("name") || "Player";
   const { socket, isConnected } = useSocket();
-  const { gameState, lastJudgeResult, lastCorrectResponse, lastFinalResult, buzzCountdown, countdownTotalSeconds, isNewRoundLoading } =
+  const { gameState, lastJudgeResult, lastCorrectResponse, lastFinalResult, buzzCountdown, countdownTotalSeconds, isNewRoundLoading, revealedAnswer } =
     useGameState(socket);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -370,8 +370,29 @@ export default function PlayerGamePage() {
               </div>
             )}
 
-            {/* Buzz button */}
-            <BuzzButton state={buzzState} onBuzz={handleBuzz} countdown={buzzCountdown} countdownTotalSeconds={countdownTotalSeconds} />
+            {/* Revealed answer */}
+            {currentClue.state === "answer_revealed" && revealedAnswer && (
+              <div className="mb-4 p-4 bg-accent/10 rounded-xl border-2 border-accent/30">
+                <p className="text-accent/70 text-xs uppercase tracking-wider mb-1">
+                  Correct Response
+                </p>
+                <p className="text-accent text-2xl font-bold">
+                  {revealedAnswer}
+                </p>
+              </div>
+            )}
+
+            {/* No one answered indicator */}
+            {currentClue.state === "awaiting_reveal" && (
+              <div className="mb-4 p-3 rounded-lg font-bold text-lg text-text-secondary">
+                No one answered
+              </div>
+            )}
+
+            {/* Buzz button — hide during reveal states */}
+            {currentClue.state !== "awaiting_reveal" && currentClue.state !== "answer_revealed" && (
+              <BuzzButton state={buzzState} onBuzz={handleBuzz} countdown={buzzCountdown} countdownTotalSeconds={countdownTotalSeconds} />
+            )}
           </div>
         )}
       </div>

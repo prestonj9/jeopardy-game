@@ -31,7 +31,7 @@ type TypedSocket = Socket<
   SocketData
 >;
 
-const BUZZ_DELAY_SECONDS = 4;
+const BUZZ_DELAY_SECONDS = 5;
 const BUZZ_WINDOW_SECONDS = 10;
 const ANSWER_SECONDS = 5;
 
@@ -135,15 +135,9 @@ function startBuzzWindowCountdown(io: TypedServer, game: Game): void {
       });
 
       if (game.currentClue) {
-        const clueData =
-          game.board.categories[game.currentClue.categoryIndex].clues[
-            game.currentClue.clueIndex
-          ];
-        clueData.isRevealed = true;
-        const correctResponse = clueData.correctResponse;
-        game.currentClue = null;
-
-        io.to(game.id).emit("game:clue_complete", { correctResponse });
+        // Transition to awaiting_reveal so host can reveal the answer
+        game.currentClue.state = "awaiting_reveal";
+        game.currentClue.answeringPlayerId = null;
         io.to(game.id).emit("game:state_sync", serializeGameState(game));
       }
     }
@@ -360,13 +354,11 @@ export function registerSocketHandlers(io: TypedServer): void {
               p.isConnected && !clue.playersWhoAttempted.has(p.id)
           );
 
-          const clueComplete = canStillBuzz.length === 0;
-
           io.to(game.id).emit("game:judge_result", {
             playerId: player.id,
             correct: false,
             scores: getScoreMap(game),
-            clueComplete,
+            clueComplete: false,
           });
 
           if (canStillBuzz.length > 0) {
@@ -376,11 +368,9 @@ export function registerSocketHandlers(io: TypedServer): void {
             io.to(game.id).emit("game:buzzing_open");
             startBuzzWindowCountdown(io, game);
           } else {
-            clueData.isRevealed = true;
-            game.currentClue = null;
-            io.to(game.id).emit("game:clue_complete", {
-              correctResponse: clueData.correctResponse,
-            });
+            // All players failed — transition to awaiting_reveal
+            clue.state = "awaiting_reveal";
+            clue.answeringPlayerId = null;
           }
         }
       }
@@ -408,6 +398,28 @@ export function registerSocketHandlers(io: TypedServer): void {
       game.currentClue = null;
 
       io.to(game.id).emit("game:clue_complete", { correctResponse });
+      io.to(game.id).emit("game:state_sync", serializeGameState(game));
+    });
+
+    // ── Host: Reveal Answer ──────────────────────────────────────────
+    socket.on("host:reveal_answer", () => {
+      const result = findGameBySocketId(socket.id);
+      if (!result || !result.isHost) return;
+      const { game } = result;
+
+      if (!game.currentClue || game.currentClue.state !== "awaiting_reveal")
+        return;
+
+      game.currentClue.state = "answer_revealed";
+
+      const clueData =
+        game.board.categories[game.currentClue.categoryIndex].clues[
+          game.currentClue.clueIndex
+        ];
+
+      io.to(game.id).emit("game:answer_revealed", {
+        correctResponse: clueData.correctResponse,
+      });
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 

@@ -12,6 +12,7 @@ interface ClueOverlayProps {
   buzzCountdown: number | null;
   countdownType: CountdownType | null;
   countdownTotalSeconds: number | null;
+  revealedAnswer?: string | null;
 }
 
 export default function ClueOverlay({
@@ -24,6 +25,7 @@ export default function ClueOverlay({
   buzzCountdown,
   countdownType,
   countdownTotalSeconds,
+  revealedAnswer,
 }: ClueOverlayProps) {
   return (
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 md:p-8">
@@ -111,6 +113,27 @@ export default function ClueOverlay({
           {/* Showing clue without countdown (e.g. re-buzz after incorrect) */}
           {clueState === "showing_clue" && (buzzCountdown === null || buzzCountdown === 0) && (
             <p className="text-text-tertiary text-lg">Waiting...</p>
+          )}
+
+          {/* Awaiting reveal — no one answered */}
+          {clueState === "awaiting_reveal" && (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-text-secondary text-2xl md:text-3xl font-bold">
+                No one answered
+              </p>
+            </div>
+          )}
+
+          {/* Answer revealed — show correct answer prominently */}
+          {clueState === "answer_revealed" && revealedAnswer && (
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-text-secondary text-sm uppercase tracking-widest">
+                Correct Response
+              </p>
+              <p className="text-accent text-3xl md:text-5xl font-bold">
+                {revealedAnswer}
+              </p>
+            </div>
           )}
         </div>
       </div>
