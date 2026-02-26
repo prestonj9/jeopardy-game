@@ -29,7 +29,7 @@ export default function ShareableLink({ url }: ShareableLinkProps) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-2 px-4 py-2 bg-white/50 border border-white/60 rounded-full hover:bg-white/70 transition-all group max-w-full mx-auto"
+      className="flex items-center gap-2 px-4 py-2 bg-white/50 border border-white/60 rounded-full hover:bg-white/70 transition-all group max-w-full mx-auto overflow-hidden"
     >
       <span className="text-text-secondary text-xs truncate">
         {url}

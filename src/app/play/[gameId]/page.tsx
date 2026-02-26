@@ -17,7 +17,7 @@ export default function PlayerGamePage() {
   const gameId = params.gameId as string;
   const playerName = searchParams.get("name") || "Player";
   const { socket, isConnected } = useSocket();
-  const { gameState, lastJudgeResult, lastCorrectResponse, lastFinalResult, buzzCountdown, countdownTotalSeconds, isNewRoundLoading, revealedAnswer } =
+  const { gameState, lastJudgeResult, lastFinalResult, buzzCountdown, countdownTotalSeconds, isNewRoundLoading, revealedAnswer } =
     useGameState(socket);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -306,13 +306,6 @@ export default function PlayerGamePage() {
             <p className="text-text-secondary text-lg">
               Waiting for host to select a clue...
             </p>
-            {lastCorrectResponse && (
-              <div className="mt-4 p-4 bg-surface rounded-xl border border-border">
-                <p className="text-accent font-bold">
-                  {lastCorrectResponse}
-                </p>
-              </div>
-            )}
           </div>
         )}
 
