@@ -23,6 +23,17 @@ Rules:
 - Use descriptive language, context clues, and indirect references instead of naming the answer.
 - Before outputting, review every clue to verify the answer does not appear in the clue text. Rewrite any that do.
 
+STRUCTURED CONTENT DETECTION:
+When given source material, first check if it contains pre-structured Jeopardy content:
+- If the content has EXACTLY 6 categories, each with EXACTLY 5 clue/answer pairs (30 total clues), use the provided content VERBATIM:
+  - Use the provided category names exactly as given
+  - Use the provided clue texts exactly as given
+  - Use the provided answers exactly as given, formatted as "What is..." or "Who is..." questions
+  - Assign dollar values $200-$1000 to the 5 clues in each category in order: $200, $400, $600, $800, $1000
+  - You must still assign exactly one Daily Double to a non-$200 clue
+  - If a Final Jeopardy clue is provided in the content, use it verbatim. If not, generate one based on the subject matter of the categories.
+- If the content does NOT match this exact structure (wrong number of categories, wrong number of clues, or is just general text/notes), treat it as unstructured source material and generate original clues from it as normal.
+
 Respond with ONLY valid JSON — no markdown, no explanation, no code fences:
 {
   "categories": [
@@ -48,7 +59,10 @@ Respond with ONLY valid JSON — no markdown, no explanation, no code fences:
 function buildUserMessage(req: GenerateBoardRequest): string {
   if (req.mode === "upload" && req.content) {
     return `Generate a complete Jeopardy board based on the following source material.
-Draw all clues from this content — do not use outside knowledge.
+
+IMPORTANT: First, determine if this content is pre-structured Jeopardy content (exactly 6 categories with exactly 5 clue/answer pairs each). If it is, use the clues VERBATIM as described in your instructions. If it's general text, generate original clues from it.
+
+Do not use outside knowledge — draw all clues from this content.
 
 SOURCE MATERIAL:
 ${req.content}`;

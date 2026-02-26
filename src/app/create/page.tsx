@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LOADING_MESSAGES } from "@/lib/constants";
 import InteractiveHero from "@/components/InteractiveHero";
+import { parseGoogleUrl } from "@/lib/google-fetcher";
 
-type Mode = "topic" | "upload";
+type Mode = "topic" | "upload" | "link";
 
 export default function CreatePage() {
   const router = useRouter();
@@ -16,6 +17,10 @@ export default function CreatePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null as string | null);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkContent, setLinkContent] = useState(null as string | null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkSourceName, setLinkSourceName] = useState(null as string | null);
 
   async function handleFileUpload(file: File) {
     setUploadLoading(true);
@@ -35,6 +40,28 @@ export default function CreatePage() {
     }
   }
 
+  async function handleLinkFetch() {
+    setLinkLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/fetch-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: linkUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch document");
+      setLinkContent(data.content);
+      setLinkSourceName(
+        data.sourceType === "spreadsheet" ? "Google Sheet" : "Google Doc"
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch document");
+    } finally {
+      setLinkLoading(false);
+    }
+  }
+
   async function handleGenerate() {
     setLoading(true);
     setError(null);
@@ -42,7 +69,7 @@ export default function CreatePage() {
       const body =
         mode === "topic"
           ? { mode: "topic" as const, topic }
-          : { mode: "upload" as const, content: uploadedContent || "" };
+          : { mode: "upload" as const, content: (mode === "link" ? linkContent : uploadedContent) || "" };
 
       const boardRes = await fetch("/api/generate-board", {
         method: "POST",
@@ -70,7 +97,13 @@ export default function CreatePage() {
     }
   }
 
-  const canGenerate = !loading && (mode === "topic" ? topic.trim() !== "" : uploadedContent !== null);
+  const canGenerate =
+    !loading &&
+    (mode === "topic"
+      ? topic.trim() !== ""
+      : mode === "upload"
+      ? uploadedContent !== null
+      : linkContent !== null);
 
   // Rotate loading messages
   const [messageIndex, setMessageIndex] = useState(0);
@@ -110,16 +143,22 @@ export default function CreatePage() {
 
         <div className="flex bg-white/50 border border-white/60 rounded-full p-1 mb-6">
           <button
-            onClick={() => setMode("topic")}
+            onClick={() => { setMode("topic"); setError(null); }}
             className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (mode === "topic" ? "bg-text-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
           >
-            Enter a Topic
+            Topic
           </button>
           <button
-            onClick={() => setMode("upload")}
+            onClick={() => { setMode("upload"); setError(null); }}
             className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (mode === "upload" ? "bg-text-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
           >
-            Upload a File
+            Upload
+          </button>
+          <button
+            onClick={() => { setMode("link"); setError(null); }}
+            className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (mode === "link" ? "bg-text-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
+          >
+            Google Link
           </button>
         </div>
 
@@ -165,6 +204,42 @@ export default function CreatePage() {
                 }}
               />
             </label>
+          </div>
+        )}
+
+        {mode === "link" && (
+          <div className="mb-6">
+            <label className="block text-text-primary text-sm font-medium mb-2">
+              Paste a Google Doc or Sheet link
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={linkUrl}
+                onChange={(e) => {
+                  setLinkUrl(e.target.value);
+                  setLinkContent(null);
+                  setLinkSourceName(null);
+                }}
+                placeholder="https://docs.google.com/document/d/..."
+                className="flex-1 px-5 py-3 rounded-full bg-white/50 border border-white/60 text-text-primary placeholder-text-tertiary text-base focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <button
+                onClick={handleLinkFetch}
+                disabled={!linkUrl.trim() || !parseGoogleUrl(linkUrl) || linkLoading}
+                className="px-5 py-3 rounded-full font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-accent text-white hover:opacity-90"
+              >
+                {linkLoading ? "Fetching..." : "Fetch"}
+              </button>
+            </div>
+            <p className="text-text-tertiary text-sm mt-2">
+              Document must be shared as &ldquo;Anyone with the link can view&rdquo;
+            </p>
+            {linkContent && linkSourceName && (
+              <div className="mt-3 p-3 bg-success/10 border border-success/30 rounded-lg text-success text-sm">
+                {linkSourceName} content loaded ({linkContent.length.toLocaleString()} characters)
+              </div>
+            )}
           </div>
         )}
 
