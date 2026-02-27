@@ -4,7 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LOADING_MESSAGES } from "@/lib/constants";
 import InteractiveHero from "@/components/InteractiveHero";
-import { parseGoogleUrl } from "@/lib/google-fetcher";
+
+function isValidUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 type Mode = "topic" | "upload" | "link";
 
@@ -21,6 +29,7 @@ export default function CreatePage() {
   const [linkContent, setLinkContent] = useState(null as string | null);
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkSourceName, setLinkSourceName] = useState(null as string | null);
+  const [showLinkInfo, setShowLinkInfo] = useState(false);
 
   async function handleFileUpload(file: File) {
     setUploadLoading(true);
@@ -50,13 +59,11 @@ export default function CreatePage() {
         body: JSON.stringify({ url: linkUrl }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch document");
+      if (!res.ok) throw new Error(data.error || "Failed to fetch content");
       setLinkContent(data.content);
-      setLinkSourceName(
-        data.sourceType === "spreadsheet" ? "Google Sheet" : "Google Doc"
-      );
+      setLinkSourceName(data.sourceName || "Content");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch document");
+      setError(err instanceof Error ? err.message : "Failed to fetch content");
     } finally {
       setLinkLoading(false);
     }
@@ -158,7 +165,7 @@ export default function CreatePage() {
             onClick={() => { setMode("link"); setError(null); }}
             className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (mode === "link" ? "bg-text-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
           >
-            Google Link
+            Link
           </button>
         </div>
 
@@ -210,7 +217,7 @@ export default function CreatePage() {
         {mode === "link" && (
           <div className="mb-6">
             <label className="block text-text-primary text-sm font-medium mb-2">
-              Paste a Google Doc or Sheet link
+              Paste a URL
             </label>
             <div className="flex gap-2">
               <input
@@ -221,20 +228,63 @@ export default function CreatePage() {
                   setLinkContent(null);
                   setLinkSourceName(null);
                 }}
-                placeholder="https://docs.google.com/document/d/..."
+                placeholder="https://example.com/article"
                 className="flex-1 px-5 py-3 rounded-full bg-white/50 border border-white/60 text-text-primary placeholder-text-tertiary text-base focus:outline-none focus:ring-2 focus:ring-accent"
               />
               <button
                 onClick={handleLinkFetch}
-                disabled={!linkUrl.trim() || !parseGoogleUrl(linkUrl) || linkLoading}
+                disabled={!linkUrl.trim() || !isValidUrl(linkUrl) || linkLoading}
                 className="px-5 py-3 rounded-full font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-accent text-white hover:opacity-90"
               >
                 {linkLoading ? "Fetching..." : "Fetch"}
               </button>
             </div>
-            <p className="text-text-tertiary text-sm mt-2">
-              Document must be shared as &ldquo;Anyone with the link can view&rdquo;
-            </p>
+
+            <button
+              onClick={() => setShowLinkInfo(!showLinkInfo)}
+              className="flex items-center gap-1.5 text-text-tertiary hover:text-text-secondary text-sm mt-2 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+              </svg>
+              {showLinkInfo ? "Hide tips" : "What links work?"}
+            </button>
+
+            {showLinkInfo && (
+              <div className="mt-2 p-4 bg-white/40 border border-white/60 rounded-xl text-sm text-text-secondary space-y-2.5">
+                <p className="font-medium text-text-primary">Supported links</p>
+                <ul className="space-y-1.5 list-none">
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5 flex-shrink-0">&#10003;</span>
+                    <span><strong>Articles &amp; blog posts</strong> &mdash; news stories, tutorials, Wikipedia pages, and any content-rich web page</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5 flex-shrink-0">&#10003;</span>
+                    <span><strong>Lesson pages &amp; course content</strong> &mdash; educational sites, textbook chapters, study guides</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5 flex-shrink-0">&#10003;</span>
+                    <span><strong>Google Docs &amp; Sheets</strong> &mdash; set sharing to &ldquo;Anyone with the link can view&rdquo;</span>
+                  </li>
+                </ul>
+                <p className="font-medium text-text-primary pt-1">Tips for best results</p>
+                <ul className="space-y-1.5 list-none">
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-0.5 flex-shrink-0">&bull;</span>
+                    <span>Pages with more text generate better games &mdash; aim for at least a few paragraphs</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-0.5 flex-shrink-0">&bull;</span>
+                    <span>The page must be publicly accessible (no login required)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-warning mt-0.5 flex-shrink-0">&times;</span>
+                    <span>Pages that are mostly images, videos, or interactive apps won&rsquo;t have enough text to extract</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
             {linkContent && linkSourceName && (
               <div className="mt-3 p-3 bg-success/10 border border-success/30 rounded-lg text-success text-sm">
                 {linkSourceName} content loaded ({linkContent.length.toLocaleString()} characters)

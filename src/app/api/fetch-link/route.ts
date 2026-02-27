@@ -3,6 +3,10 @@ import {
   fetchGoogleDocContent,
   parseGoogleUrl,
 } from "@/lib/google-fetcher";
+import {
+  fetchWebPageContent,
+  isValidHttpUrl,
+} from "@/lib/web-scraper";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,27 +16,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
-    const info = parseGoogleUrl(url);
-    if (!info) {
+    // Branch 1: Google Doc/Sheet — use existing export-based fetcher
+    const googleInfo = parseGoogleUrl(url);
+    if (googleInfo) {
+      const content = await fetchGoogleDocContent(url);
+      return NextResponse.json({
+        content,
+        sourceType: googleInfo.type,
+        sourceName:
+          googleInfo.type === "spreadsheet" ? "Google Sheet" : "Google Doc",
+      });
+    }
+
+    // Branch 2: Generic web URL — use Readability extraction
+    if (!isValidHttpUrl(url)) {
       return NextResponse.json(
         {
           error:
-            "Please paste a valid Google Docs or Google Sheets URL (e.g., https://docs.google.com/document/d/...)",
+            "Please enter a valid URL starting with http:// or https://",
         },
         { status: 400 }
       );
     }
 
-    const content = await fetchGoogleDocContent(url);
+    const result = await fetchWebPageContent(url);
 
     return NextResponse.json({
-      content,
-      sourceType: info.type,
+      content: result.content,
+      sourceType: "webpage",
+      sourceName: result.title || result.siteName || "Web page",
     });
   } catch (err) {
     console.error("Link fetch error:", err);
     const message =
-      err instanceof Error ? err.message : "Failed to fetch document";
+      err instanceof Error ? err.message : "Failed to fetch content";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
