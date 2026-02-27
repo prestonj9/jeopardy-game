@@ -651,8 +651,9 @@ export function registerSocketHandlers(io: TypedServer): void {
       const nextState = transitions[fj.state];
       if (!nextState) return;
 
+      fj.state = nextState as FinalState;
+
       if (nextState === "answering") {
-        fj.state = "answering" as FinalState;
         io.to(game.id).emit("game:final_clue", {
           clueText: fj.clueText,
         });
