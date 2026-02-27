@@ -171,16 +171,18 @@ export async function startBackgroundGeneration(game: Game): Promise<void> {
     const io = globalThis.__jeopardy_io__;
     if (io) {
       io.to(game.id).emit("game:board_ready");
-      io.to(game.id).emit("game:state_sync", serializeGameState(game));
 
       // If host already clicked Start, auto-start now
+      // Batch board ready + game start into a single state_sync
+      // to avoid flashing back to lobby between two syncs
       if (game.startRequested && game.players.size > 0) {
         game.status = "active";
         game.startRequested = false;
         io.to(game.id).emit("game:started");
-        io.to(game.id).emit("game:state_sync", serializeGameState(game));
         console.log(`[bg-gen] Auto-starting game ${game.id} (start was queued)`);
       }
+
+      io.to(game.id).emit("game:state_sync", serializeGameState(game));
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Board generation failed";
