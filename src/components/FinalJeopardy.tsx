@@ -580,46 +580,67 @@ export default function FinalJeopardy({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          WINNER CELEBRATION
+          WINNER CELEBRATION — Podium
           ═══════════════════════════════════════════════════════════════════ */}
-      {state === "winner" && (
-        <>
-          <Confetti />
-          <div className="w-full max-w-4xl text-center relative z-10">
-            <h2 className="text-3xl md:text-5xl font-bold text-gradient-accent mb-8 animate-fade-in">
-              {isHost ? "We Have a Winner!" : "Final Results"}
-            </h2>
+      {state === "winner" && (() => {
+        const sorted = [...players].sort((a, b) => b.score - a.score);
+        const podiumPlayers = sorted.slice(0, 3);
+        const restPlayers = sorted.slice(3);
 
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              {[...players]
-                .sort((a, b) => b.score - a.score)
-                .map((player, i) => {
-                  const isWinner = i === 0;
+        // Podium order: 2nd, 1st, 3rd (classic podium arrangement)
+        const podiumOrder = podiumPlayers.length >= 3
+          ? [podiumPlayers[1], podiumPlayers[0], podiumPlayers[2]]
+          : podiumPlayers.length === 2
+            ? [podiumPlayers[1], podiumPlayers[0]]
+            : [podiumPlayers[0]];
+
+        const podiumConfig: Record<number, { height: string; medal: string; delay: string; color: string; border: string; bg: string }> = {
+          0: { height: "min-h-[200px]", medal: "\ud83e\udd47", delay: "0.6s", color: "text-amber-500", border: "border-amber-400", bg: "bg-amber-50" },
+          1: { height: "min-h-[160px]", medal: "\ud83e\udd48", delay: "0.3s", color: "text-gray-400", border: "border-gray-300", bg: "bg-gray-50" },
+          2: { height: "min-h-[130px]", medal: "\ud83e\udd49", delay: "0s", color: "text-amber-700", border: "border-amber-600/40", bg: "bg-amber-50/50" },
+        };
+
+        // Map podiumOrder back to their original rank (0=1st, 1=2nd, 2=3rd)
+        const getRank = (player: typeof sorted[0]) => sorted.indexOf(player);
+
+        return (
+          <>
+            <Confetti />
+            <div className="w-full max-w-4xl text-center relative z-10">
+              <h2 className="text-3xl md:text-5xl font-bold text-gradient-accent mb-10 animate-fade-in">
+                {isHost ? "We Have a Winner!" : "Final Results"}
+              </h2>
+
+              {/* Podium */}
+              <div className={`flex items-end justify-center gap-3 md:gap-5 mb-8 ${podiumPlayers.length === 1 ? "px-20" : "px-4"}`}>
+                {podiumOrder.map((player) => {
+                  const rank = getRank(player);
+                  const config = podiumConfig[rank];
+                  const isFirst = rank === 0;
+
                   return (
                     <div
                       key={player.id}
                       className={`
-                        rounded-2xl border-2 p-6 transition-all duration-700 w-full sm:w-64
-                        ${isWinner
-                          ? "border-accent bg-accent/10 scale-110 shadow-2xl animate-winner-glow"
-                          : "border-border bg-surface opacity-60 scale-95"
-                        }
+                        flex-1 max-w-[200px] ${config.height} flex flex-col items-center justify-end
+                        rounded-t-2xl border-2 border-b-0 ${config.border} ${config.bg}
+                        p-4 pb-5 opacity-0 animate-podium-rise origin-bottom
+                        ${isFirst ? "animate-winner-glow" : ""}
                       `}
+                      style={{ animationDelay: config.delay, animationFillMode: "forwards" }}
                     >
-                      {isWinner && (
-                        <div className="text-3xl mb-2 animate-bounce">
-                          &#x1f3c6;
-                        </div>
-                      )}
-                      <p className={`font-bold text-xl mb-1 ${isWinner ? "text-accent" : "text-text-primary"}`}>
+                      <div className={`text-3xl md:text-4xl mb-1 ${isFirst ? "animate-bounce" : ""}`}>
+                        {config.medal}
+                      </div>
+                      <p className="text-text-primary font-bold text-base md:text-lg truncate max-w-full mb-0.5">
                         {player.name}
                       </p>
-                      {isWinner && (
-                        <p className="text-accent/70 text-xs uppercase tracking-wider mb-2">
+                      {isFirst && (
+                        <p className="text-accent/70 text-[10px] uppercase tracking-widest mb-1">
                           Champion
                         </p>
                       )}
-                      <p className={`font-bold text-2xl tabular-nums ${
+                      <p className={`font-bold text-xl md:text-2xl tabular-nums ${
                         player.score < 0 ? "text-danger" : "text-accent"
                       }`}>
                         ${player.score.toLocaleString()}
@@ -627,19 +648,42 @@ export default function FinalJeopardy({
                     </div>
                   );
                 })}
-            </div>
+              </div>
 
-            {isHost && (
-              <button
-                onClick={onAdvance}
-                className="px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
-              >
-                Finish Game
-              </button>
-            )}
-          </div>
-        </>
-      )}
+              {/* Remaining players */}
+              {restPlayers.length > 0 && (
+                <div className="max-w-sm mx-auto space-y-1.5 mb-8 animate-fade-in" style={{ animationDelay: "0.9s", animationFillMode: "forwards", opacity: 0 }}>
+                  {restPlayers.map((player, i) => (
+                    <div
+                      key={player.id}
+                      className="flex justify-between items-center px-4 py-2 bg-surface/60 rounded-lg border border-border/50"
+                    >
+                      <span className="text-text-secondary text-sm font-medium">
+                        #{i + 4} {player.name}
+                      </span>
+                      <span className={`text-sm font-bold tabular-nums ${
+                        player.score < 0 ? "text-danger" : "text-text-primary"
+                      }`}>
+                        ${player.score.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isHost && (
+                <button
+                  onClick={onAdvance}
+                  className="px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90 animate-fade-in"
+                  style={{ animationDelay: "1s", animationFillMode: "forwards", opacity: 0 }}
+                >
+                  Finish Game
+                </button>
+              )}
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }

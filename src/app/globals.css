@@ -97,6 +97,14 @@ html, body {
 }
 .animate-winner-glow { animation: winner-glow 2s ease-in-out infinite; }
 
+/* Podium slide up */
+@keyframes podium-rise {
+  0% { opacity: 0; transform: translateY(60px) scaleY(0.6); }
+  60% { opacity: 1; transform: translateY(-8px) scaleY(1.02); }
+  100% { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+.animate-podium-rise { animation: podium-rise 0.7s ease-out forwards; }
+
 /* Confetti falling */
 @keyframes confetti-fall {
   0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
