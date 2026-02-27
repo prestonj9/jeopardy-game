@@ -116,6 +116,10 @@ export default function HostRemotePage() {
     socket?.emit("host:retry_generation");
   }, [socket]);
 
+  const handleNextClue = useCallback(() => {
+    socket?.emit("host:next_clue");
+  }, [socket]);
+
   const handleNewRound = useCallback(() => {
     if (!socket || !newRoundTopic.trim()) return;
     socket.emit("host:new_round", { topic: newRoundTopic.trim() });
@@ -177,7 +181,6 @@ export default function HostRemotePage() {
       <div className="min-h-screen bg-white flex items-center justify-center p-6 relative overflow-hidden">
         <InteractiveHero />
         <div className="text-center max-w-sm relative z-10">
-          <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}
             className="text-text-secondary text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
@@ -293,9 +296,13 @@ export default function HostRemotePage() {
 
   // ── Active game ──────────────────────────────────────────────
   const hasActiveClue = gameState.currentClue && activeClueText;
-  const allCluesRevealed = gameState.board.categories.every((cat) =>
-    cat.clues.every((clue) => clue.isRevealed)
-  );
+  const isRapidFire = gameState.gameMode === "rapid_fire";
+
+  const allCluesRevealed = isRapidFire
+    ? gameState.currentClueIndex >= gameState.totalClues - 1 && !gameState.currentClue
+    : gameState.board.categories.every((cat) =>
+        cat.clues.every((clue) => clue.isRevealed)
+      );
 
   // Get answering player name
   const answeringPlayerName = gameState.currentClue?.answeringPlayerId
@@ -304,6 +311,86 @@ export default function HostRemotePage() {
       )?.name
     : undefined;
 
+  // Rapid Fire Remote
+  if (isRapidFire) {
+    const notStarted = gameState.currentClueIndex === -1 && !gameState.currentClue;
+    const hasMoreClues = gameState.currentClueIndex < gameState.totalClues - 1;
+
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        {hasActiveClue ? (
+          /* Active Clue — Judge controls */
+          <div className="flex-1">
+            <RemoteClueView
+              clueText={activeClueText!}
+              value={activeClueValue}
+              clueState={gameState.currentClue!.state}
+              correctResponse={correctResponse}
+              answeringPlayerName={answeringPlayerName}
+              isDailyDouble={false}
+              buzzCountdown={buzzCountdown}
+              countdownType={countdownType}
+              countdownTotalSeconds={countdownTotalSeconds}
+              onJudge={handleJudge}
+              onSkip={handleSkip}
+              onRevealAnswer={handleRevealAnswer}
+            />
+          </div>
+        ) : (
+          /* Between clues — Next button or Final Jeopardy */
+          <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4">
+            {/* Progress */}
+            <div className="w-full max-w-sm">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-text-secondary text-sm font-medium">
+                  {notStarted
+                    ? `Rapid Fire — ${gameState.totalClues} Clues`
+                    : allCluesRevealed
+                    ? "All Clues Complete!"
+                    : `Clue ${gameState.currentClueIndex + 1} of ${gameState.totalClues}`}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-surface rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-accent to-accent-cyan rounded-full transition-all duration-500 ease-out"
+                  style={{
+                    width: `${gameState.totalClues > 0 ? (gameState.rapidFireClues.filter((c) => c.isRevealed).length / gameState.totalClues) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Next Clue or Start Final Jeopardy */}
+            {allCluesRevealed ? (
+              <button
+                onClick={handleStartFinal}
+                className="w-full max-w-sm py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-xl hover:opacity-90 active:scale-95 transition-all animate-pulse"
+              >
+                Start Final Jeopardy
+              </button>
+            ) : hasMoreClues || notStarted ? (
+              <button
+                onClick={handleNextClue}
+                className="w-full max-w-sm py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-xl hover:opacity-90 active:scale-95 transition-all"
+              >
+                {notStarted ? "Start — First Clue" : "Next Clue"}
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        {/* Scoreboard */}
+        <div className="p-3 pb-safe">
+          <Scoreboard
+            players={gameState.players}
+            activePlayerId={gameState.currentClue?.answeringPlayerId}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Classic Remote
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Active Clue View */}

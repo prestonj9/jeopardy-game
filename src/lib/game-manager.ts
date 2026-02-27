@@ -3,10 +3,13 @@ import type {
   Game,
   Board,
   Player,
+  RapidFireClue,
   SerializableGameState,
   SerializablePlayer,
   ScoreMap,
   GenerateBoardRequest,
+  GenerateBoardResponse,
+  GenerateRapidFireResponse,
 } from "./types.ts";
 import { generateBoard } from "./ai-generator.ts";
 
@@ -55,6 +58,7 @@ export function createGame(
     id,
     hostSocketId,
     displaySocketIds: new Set(),
+    gameMode: "classic",
     status: "lobby",
     board,
     boardStatus: "ready",
@@ -80,6 +84,8 @@ export function createGame(
     finalAnswerTimer: null,
     lastCorrectPlayerId: null,
     createdAt: Date.now(),
+    rapidFireClues: [],
+    currentClueIndex: -1,
   };
   games.set(id, game);
   return game;
@@ -105,10 +111,12 @@ export function createGameWithBackground(
   generationParams: GenerateBoardRequest
 ): Game {
   const id = nanoid();
+  const gameMode = generationParams.gameMode ?? "classic";
   const game: Game = {
     id,
     hostSocketId: "pending",
     displaySocketIds: new Set(),
+    gameMode,
     status: "lobby",
     board: createPlaceholderBoard(),
     boardStatus: "generating",
@@ -135,6 +143,8 @@ export function createGameWithBackground(
     finalAnswerTimer: null,
     lastCorrectPlayerId: null,
     createdAt: Date.now(),
+    rapidFireClues: [],
+    currentClueIndex: -1,
   };
   games.set(id, game);
 
@@ -146,10 +156,20 @@ export function createGameWithBackground(
 
 export async function startBackgroundGeneration(game: Game): Promise<void> {
   try {
-    console.log(`[bg-gen] Starting board generation for game ${game.id}`);
+    console.log(`[bg-gen] Starting ${game.gameMode} board generation for game ${game.id}`);
     const result = await generateBoard(game.generationParams!);
 
-    game.board = result.board;
+    if (game.gameMode === "rapid_fire") {
+      // Rapid fire: populate flat clue list
+      const rfResult = result as GenerateRapidFireResponse;
+      game.rapidFireClues = rfResult.clues;
+      game.currentClueIndex = -1;
+    } else {
+      // Classic: populate board grid
+      const classicResult = result as GenerateBoardResponse;
+      game.board = classicResult.board;
+    }
+
     game.finalJeopardy = {
       category: result.finalJeopardy.category,
       clueText: result.finalJeopardy.clueText,
@@ -281,7 +301,8 @@ export function getSerializablePlayers(game: Game): SerializablePlayer[] {
 export function resetGameForNewRound(
   game: Game,
   newBoard: Board,
-  newFinalJeopardy: { category: string; clueText: string; correctResponse: string }
+  newFinalJeopardy: { category: string; clueText: string; correctResponse: string },
+  newRapidFireClues?: RapidFireClue[]
 ): void {
   game.board = newBoard;
   game.boardStatus = "ready";
@@ -291,6 +312,12 @@ export function resetGameForNewRound(
   game.currentClue = null;
   game.buzzOrder = [];
   game.lastCorrectPlayerId = null;
+
+  // Rapid fire reset
+  if (newRapidFireClues) {
+    game.rapidFireClues = newRapidFireClues;
+  }
+  game.currentClueIndex = -1;
 
   if (game.buzzDelayTimer) {
     clearTimeout(game.buzzDelayTimer);
@@ -331,8 +358,23 @@ export function resetGameForNewRound(
 }
 
 export function serializeGameState(game: Game): SerializableGameState {
+  // Get revealed correct response for current clue (works for both modes)
+  let revealedCorrectResponse: string | undefined;
+  if (game.currentClue?.state === "answer_revealed") {
+    if (game.gameMode === "rapid_fire") {
+      revealedCorrectResponse =
+        game.rapidFireClues[game.currentClue.clueIndex]?.correctResponse;
+    } else {
+      revealedCorrectResponse =
+        game.board.categories[game.currentClue.categoryIndex]?.clues[
+          game.currentClue.clueIndex
+        ]?.correctResponse;
+    }
+  }
+
   return {
     id: game.id,
+    gameMode: game.gameMode,
     status: game.status,
     players: getSerializablePlayers(game),
     board: {
@@ -357,12 +399,7 @@ export function serializeGameState(game: Game): SerializableGameState {
           playersWhoAttempted: Array.from(
             game.currentClue.playersWhoAttempted
           ),
-          revealedCorrectResponse:
-            game.currentClue.state === "answer_revealed"
-              ? game.board.categories[game.currentClue.categoryIndex].clues[
-                  game.currentClue.clueIndex
-                ].correctResponse
-              : undefined,
+          revealedCorrectResponse,
         }
       : null,
     buzzOrder: game.buzzOrder,
@@ -381,5 +418,14 @@ export function serializeGameState(game: Game): SerializableGameState {
     scores: getScoreMap(game),
     boardStatus: game.boardStatus,
     boardError: game.boardError,
+    // Rapid fire fields (strip correctResponse for players)
+    rapidFireClues: game.rapidFireClues.map((clue) => ({
+      clueText: clue.clueText,
+      value: clue.value,
+      subtopic: clue.subtopic,
+      isRevealed: clue.isRevealed,
+    })),
+    currentClueIndex: game.currentClueIndex,
+    totalClues: game.rapidFireClues.length,
   };
 }

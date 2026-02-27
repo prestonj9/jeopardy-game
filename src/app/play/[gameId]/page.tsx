@@ -204,7 +204,6 @@ export default function PlayerGamePage() {
       <div className="min-h-[100dvh] bg-white flex items-center justify-center p-4 relative overflow-hidden">
         <InteractiveHero />
         <div className="text-center max-w-sm relative z-10">
-          <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}
             className="text-text-secondary text-lg animate-[fadeIn_0.5s_ease-in] min-h-[3rem]"
@@ -283,6 +282,7 @@ export default function PlayerGamePage() {
   const isAnswering = currentClue?.answeringPlayerId === playerId;
   const isDDWagerPhase = currentClue?.state === "daily_double_wager";
   const isDDForMe = isDDWagerPhase && currentClue?.answeringPlayerId === playerId;
+  const isRapidFire = gameState.gameMode === "rapid_fire";
 
   const answeringPlayerName = currentClue?.answeringPlayerId
     ? gameState.players.find((p) => p.id === currentClue.answeringPlayerId)?.name
@@ -312,13 +312,20 @@ export default function PlayerGamePage() {
       {/* Header with score */}
       <div className="px-4 py-3 bg-surface border-b border-border flex justify-between items-center">
         <span className="text-text-primary font-bold">{myPlayer?.name}</span>
-        <span
-          className={`font-bold text-xl ${
-            (myPlayer?.score ?? 0) < 0 ? "text-danger" : "text-accent"
-          }`}
-        >
-          ${(myPlayer?.score ?? 0).toLocaleString()}
-        </span>
+        <div className="flex items-center gap-3">
+          {isRapidFire && gameState.currentClueIndex >= 0 && (
+            <span className="text-text-tertiary text-xs">
+              {gameState.currentClueIndex + 1}/{gameState.totalClues}
+            </span>
+          )}
+          <span
+            className={`font-bold text-xl ${
+              (myPlayer?.score ?? 0) < 0 ? "text-danger" : "text-accent"
+            }`}
+          >
+            ${(myPlayer?.score ?? 0).toLocaleString()}
+          </span>
+        </div>
       </div>
 
       {/* Main content */}
@@ -327,7 +334,11 @@ export default function PlayerGamePage() {
         {!currentClue && (
           <div className="text-center">
             <p className="text-text-secondary text-lg">
-              Waiting for host to select a clue...
+              {isRapidFire
+                ? gameState.currentClueIndex === -1
+                  ? "Get ready — Rapid Fire!"
+                  : "Waiting for next clue..."
+                : "Waiting for host to select a clue..."}
             </p>
           </div>
         )}

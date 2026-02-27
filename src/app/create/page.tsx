@@ -13,12 +13,16 @@ function isValidUrl(urlString: string): boolean {
   }
 }
 
+import type { GameMode } from "@/lib/types";
+
 type Mode = "topic" | "upload" | "link";
 
 export default function CreatePage() {
   const router = useRouter();
+  const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [mode, setMode] = useState("topic" as Mode);
   const [topic, setTopic] = useState("");
+  const [clueCount, setClueCount] = useState(10);
   const [uploadedContent, setUploadedContent] = useState(null as string | null);
   const [fileName, setFileName] = useState(null as string | null);
   const [loading, setLoading] = useState(false);
@@ -72,10 +76,16 @@ export default function CreatePage() {
     setLoading(true);
     setError(null);
     try {
-      const generationParams =
+      const baseParams =
         mode === "topic"
           ? { mode: "topic" as const, topic }
           : { mode: "upload" as const, content: (mode === "link" ? linkContent : uploadedContent) || "" };
+
+      const generationParams = {
+        ...baseParams,
+        gameMode,
+        ...(gameMode === "rapid_fire" ? { clueCount } : {}),
+      };
 
       const gameRes = await fetch("/api/game", {
         method: "POST",
@@ -109,6 +119,47 @@ export default function CreatePage() {
           Create a Game
         </h1>
 
+        {/* Game Mode Toggle */}
+        <div className="flex bg-white/50 border border-white/60 rounded-full p-1 mb-4">
+          <button
+            onClick={() => { setGameMode("classic"); setError(null); }}
+            className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (gameMode === "classic" ? "bg-gradient-to-r from-accent to-accent-cyan text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
+          >
+            Classic
+          </button>
+          <button
+            onClick={() => { setGameMode("rapid_fire"); setError(null); }}
+            className={"flex-1 py-2.5 rounded-full font-bold text-sm transition-all " + (gameMode === "rapid_fire" ? "bg-gradient-to-r from-accent to-accent-cyan text-white shadow-sm" : "text-text-secondary hover:text-text-primary")}
+          >
+            Rapid Fire
+          </button>
+        </div>
+
+        {/* Clue Count Slider (Rapid Fire only) */}
+        {gameMode === "rapid_fire" && (
+          <div className="mb-4 px-1">
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-text-primary text-sm font-medium">
+                Number of clues
+              </label>
+              <span className="text-accent font-bold text-lg">{clueCount}</span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={30}
+              value={clueCount}
+              onChange={(e) => setClueCount(Number(e.target.value))}
+              className="w-full h-2 bg-white/50 rounded-full appearance-none cursor-pointer accent-accent"
+            />
+            <div className="flex justify-between text-text-tertiary text-xs mt-1">
+              <span>5 (quick)</span>
+              <span>30 (full)</span>
+            </div>
+          </div>
+        )}
+
+        {/* Source Mode Tabs */}
         <div className="flex bg-white/50 border border-white/60 rounded-full p-1 mb-6">
           <button
             onClick={() => { setMode("topic"); setError(null); }}

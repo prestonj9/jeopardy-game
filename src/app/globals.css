@@ -67,6 +67,13 @@ html, body {
 .animate-gradient-reveal { animation: gradient-reveal 0.8s ease-out forwards; }
 .animate-score-pop { animation: score-pop 0.3s ease-out; }
 
+@keyframes score-float-up {
+  0% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-32px); }
+}
+.animate-score-float { animation: score-float-up 1.2s ease-out forwards; }
+
 @keyframes buzz-in-reveal {
   0% { opacity: 0; transform: translateY(12px) scale(0.95); }
   60% { opacity: 1; transform: translateY(-2px) scale(1.01); }

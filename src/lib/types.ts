@@ -1,3 +1,7 @@
+// ── Game Mode ────────────────────────────────────────────────────────────────
+
+export type GameMode = "classic" | "rapid_fire";
+
 // ── Game Status ──────────────────────────────────────────────────────────────
 
 export const GameStatus = {
@@ -61,6 +65,14 @@ export interface Board {
   dailyDoubleLocation: { categoryIndex: number; clueIndex: number };
 }
 
+export interface RapidFireClue {
+  clueText: string;
+  correctResponse: string; // "What is..." — visible only to host
+  value: number; // 200, 400, 600, 800, 1000
+  subtopic: string; // e.g. "Ancient Rome", "Pop Culture"
+  isRevealed: boolean;
+}
+
 export interface Player {
   id: string; // nanoid
   socketId: string;
@@ -108,6 +120,7 @@ export interface Game {
   id: string; // nanoid, 6 chars uppercase — also the join code
   hostSocketId: string;
   displaySocketIds: Set<string>; // passive viewer sockets (TV/projector)
+  gameMode: GameMode;
   status: GameStatus;
   board: Board;
   boardStatus: "generating" | "ready" | "failed";
@@ -124,6 +137,9 @@ export interface Game {
   finalAnswerTimer: ReturnType<typeof setTimeout> | null;
   lastCorrectPlayerId: string | null;
   createdAt: number;
+  // Rapid Fire mode fields
+  rapidFireClues: RapidFireClue[];
+  currentClueIndex: number; // -1 = not started, 0..N-1 = current clue
 }
 
 // ── Serializable Types (for socket transmission) ────────────────────────────
@@ -159,8 +175,17 @@ export interface SerializableBoard {
 
 export type ScoreMap = Record<string, number>; // playerId -> score
 
+export interface SerializableRapidFireClue {
+  clueText: string;
+  value: number;
+  subtopic: string;
+  isRevealed: boolean;
+  // correctResponse intentionally omitted for players
+}
+
 export interface SerializableGameState {
   id: string;
+  gameMode: GameMode;
   status: GameStatus;
   players: SerializablePlayer[];
   board: SerializableBoard;
@@ -189,6 +214,10 @@ export interface SerializableGameState {
   scores: ScoreMap;
   boardStatus: "generating" | "ready" | "failed";
   boardError?: string;
+  // Rapid Fire mode fields
+  rapidFireClues: SerializableRapidFireClue[];
+  currentClueIndex: number;
+  totalClues: number;
 }
 
 // ── AI Board Response (shared between generator & validator) ─────────────────
@@ -210,16 +239,43 @@ export interface AIBoardResponse {
   };
 }
 
+// ── AI Rapid Fire Response ──────────────────────────────────────────────────
+
+export interface AIRapidFireResponse {
+  clues: Array<{
+    value: number;
+    subtopic: string;
+    clueText: string;
+    correctResponse: string;
+  }>;
+  finalJeopardy: {
+    category: string;
+    clueText: string;
+    correctResponse: string;
+  };
+}
+
 // ── API Types ───────────────────────────────────────────────────────────────
 
 export interface GenerateBoardRequest {
   mode: "topic" | "upload";
   topic?: string; // max 500 chars
   content?: string; // extracted text from uploaded file; truncate to 50,000 chars
+  gameMode?: GameMode; // defaults to "classic"
+  clueCount?: number; // for rapid_fire mode (5-30, default 10)
 }
 
 export interface GenerateBoardResponse {
   board: Board;
+  finalJeopardy: {
+    category: string;
+    clueText: string;
+    correctResponse: string;
+  };
+}
+
+export interface GenerateRapidFireResponse {
+  clues: RapidFireClue[];
   finalJeopardy: {
     category: string;
     clueText: string;
@@ -297,6 +353,7 @@ export interface ClientToServerEvents {
   "host:judge": (data: { correct: boolean }) => void;
   "host:skip_clue": () => void;
   "host:reveal_answer": () => void;
+  "host:next_clue": () => void;
   "host:start_final": () => void;
   "host:advance_final": () => void;
   "host:reveal_advance": () => void;

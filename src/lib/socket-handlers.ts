@@ -6,6 +6,8 @@ import type {
   SocketData,
   Game,
   FinalState,
+  GenerateBoardResponse,
+  GenerateRapidFireResponse,
 } from "./types.ts";
 import {
   getGame,
@@ -145,9 +147,20 @@ function startBuzzWindowCountdown(io: TypedServer, game: Game): void {
       });
 
       if (game.currentClue) {
-        // Transition to awaiting_reveal so host can reveal the answer
-        game.currentClue.state = "awaiting_reveal";
-        game.currentClue.answeringPlayerId = null;
+        if (game.gameMode === "rapid_fire") {
+          // Rapid fire: auto-complete the clue (no manual reveal step)
+          const rfClue = game.rapidFireClues[game.currentClue.clueIndex];
+          if (rfClue) {
+            rfClue.isRevealed = true;
+            const correctResponse = rfClue.correctResponse;
+            game.currentClue = null;
+            io.to(game.id).emit("game:clue_complete", { correctResponse });
+          }
+        } else {
+          // Classic: transition to awaiting_reveal so host can reveal the answer
+          game.currentClue.state = "awaiting_reveal";
+          game.currentClue.answeringPlayerId = null;
+        }
         io.to(game.id).emit("game:state_sync", serializeGameState(game));
       }
     }
@@ -393,6 +406,52 @@ export function registerSocketHandlers(io: TypedServer): void {
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 
+    // ── Host: Next Clue (Rapid Fire only) ────────────────────────────
+    socket.on("host:next_clue", () => {
+      const result = findGameBySocketId(socket.id);
+      if (!result || !result.isHost) return;
+      const { game } = result;
+
+      if (game.gameMode !== "rapid_fire") return;
+      if (game.status !== "active" || game.currentClue) return;
+
+      const nextIndex = game.currentClueIndex + 1;
+      if (nextIndex >= game.rapidFireClues.length) return;
+
+      game.currentClueIndex = nextIndex;
+      const clue = game.rapidFireClues[nextIndex];
+
+      game.currentClue = {
+        categoryIndex: -1, // no category in rapid fire
+        clueIndex: nextIndex,
+        state: "showing_clue",
+        answeringPlayerId: null,
+        dailyDoubleWager: null,
+        buzzWindowOpenedAt: 0,
+        playersWhoAttempted: new Set(),
+      };
+      game.buzzOrder = [];
+
+      // Send clue to all (no correct response)
+      io.to(game.id).emit("game:clue_selected", {
+        categoryIndex: -1,
+        clueIndex: nextIndex,
+        clueText: clue.clueText,
+        value: clue.value,
+        isDailyDouble: false,
+      });
+
+      // Send correct response to host only
+      socket.emit("game:host_clue_answer", {
+        correctResponse: clue.correctResponse,
+      });
+
+      // Start buzz countdown (same timing as classic)
+      startBuzzCountdown(io, game);
+
+      io.to(game.id).emit("game:state_sync", serializeGameState(game));
+    });
+
     // ── Host: Judge Answer ────────────────────────────────────────────
     socket.on("host:judge", (data) => {
       const result = findGameBySocketId(socket.id);
@@ -409,8 +468,13 @@ export function registerSocketHandlers(io: TypedServer): void {
       const player = game.players.get(clue.answeringPlayerId!);
       if (!player) return;
 
-      const clueData =
-        game.board.categories[clue.categoryIndex].clues[clue.clueIndex];
+      // Get clue data from the appropriate source
+      const isRapidFire = game.gameMode === "rapid_fire";
+      const clueData = isRapidFire
+        ? game.rapidFireClues[clue.clueIndex]
+        : game.board.categories[clue.categoryIndex].clues[clue.clueIndex];
+      if (!clueData) return;
+
       const value = clue.dailyDoubleWager ?? clueData.value;
 
       if (data.correct) {
@@ -433,8 +497,8 @@ export function registerSocketHandlers(io: TypedServer): void {
         clue.playersWhoAttempted.add(player.id);
         clue.answeringPlayerId = null;
 
-        // For Daily Double, incorrect ends the clue immediately
-        if (clueData.isDailyDouble) {
+        // For Daily Double (classic only), incorrect ends the clue immediately
+        if (!isRapidFire && 'isDailyDouble' in clueData && clueData.isDailyDouble) {
           clueData.isRevealed = true;
           game.currentClue = null;
 
@@ -466,8 +530,15 @@ export function registerSocketHandlers(io: TypedServer): void {
             game.buzzOrder = [];
             io.to(game.id).emit("game:buzzing_open");
             startBuzzWindowCountdown(io, game);
+          } else if (isRapidFire) {
+            // Rapid fire: all players failed — auto-complete the clue
+            clueData.isRevealed = true;
+            game.currentClue = null;
+            io.to(game.id).emit("game:clue_complete", {
+              correctResponse: clueData.correctResponse,
+            });
           } else {
-            // All players failed — transition to awaiting_reveal
+            // Classic: all players failed — transition to awaiting_reveal
             clue.state = "awaiting_reveal";
             clue.answeringPlayerId = null;
           }
@@ -488,12 +559,19 @@ export function registerSocketHandlers(io: TypedServer): void {
       // Clear all running timers
       clearAllTimers(game);
 
-      const clueData =
-        game.board.categories[game.currentClue.categoryIndex].clues[
-          game.currentClue.clueIndex
-        ];
-      clueData.isRevealed = true;
-      const correctResponse = clueData.correctResponse;
+      let correctResponse: string;
+      if (game.gameMode === "rapid_fire") {
+        const rfClue = game.rapidFireClues[game.currentClue.clueIndex];
+        rfClue.isRevealed = true;
+        correctResponse = rfClue.correctResponse;
+      } else {
+        const clueData =
+          game.board.categories[game.currentClue.categoryIndex].clues[
+            game.currentClue.clueIndex
+          ];
+        clueData.isRevealed = true;
+        correctResponse = clueData.correctResponse;
+      }
       game.currentClue = null;
 
       io.to(game.id).emit("game:clue_complete", { correctResponse });
@@ -511,14 +589,17 @@ export function registerSocketHandlers(io: TypedServer): void {
 
       game.currentClue.state = "answer_revealed";
 
-      const clueData =
-        game.board.categories[game.currentClue.categoryIndex].clues[
-          game.currentClue.clueIndex
-        ];
+      let correctResponse: string;
+      if (game.gameMode === "rapid_fire") {
+        correctResponse = game.rapidFireClues[game.currentClue.clueIndex].correctResponse;
+      } else {
+        correctResponse =
+          game.board.categories[game.currentClue.categoryIndex].clues[
+            game.currentClue.clueIndex
+          ].correctResponse;
+      }
 
-      io.to(game.id).emit("game:answer_revealed", {
-        correctResponse: clueData.correctResponse,
-      });
+      io.to(game.id).emit("game:answer_revealed", { correctResponse });
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 
@@ -703,13 +784,21 @@ export function registerSocketHandlers(io: TypedServer): void {
       io.to(game.id).emit("game:new_round_loading");
 
       try {
-        console.log(`[new_round] Generating board for topic: "${topic}" in game ${game.id}`);
-        const { board, finalJeopardy } = await generateBoard({
+        console.log(`[new_round] Generating ${game.gameMode} board for topic: "${topic}" in game ${game.id}`);
+        const genResult = await generateBoard({
           mode: "topic",
           topic,
+          gameMode: game.gameMode,
+          clueCount: game.generationParams?.clueCount,
         });
 
-        resetGameForNewRound(game, board, finalJeopardy);
+        if (game.gameMode === "rapid_fire") {
+          const rfResult = genResult as GenerateRapidFireResponse;
+          resetGameForNewRound(game, game.board, rfResult.finalJeopardy, rfResult.clues);
+        } else {
+          const classicResult = genResult as GenerateBoardResponse;
+          resetGameForNewRound(game, classicResult.board, classicResult.finalJeopardy);
+        }
 
         console.log(`[new_round] Board generated, game ${game.id} reset to active`);
         io.to(game.id).emit("game:state_sync", serializeGameState(game));

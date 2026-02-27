@@ -1,4 +1,4 @@
-import type { AIBoardResponse } from "./types.ts";
+import type { AIBoardResponse, AIRapidFireResponse } from "./types.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -195,6 +195,43 @@ export function validateClue(
 }
 
 // ── Full Board Validation ────────────────────────────────────────────────────
+
+/**
+ * Validates all rapid fire clues + Final Jeopardy.
+ * Returns only the failures (empty array = all passed).
+ */
+export function validateRapidFireBoard(data: AIRapidFireResponse): ClueValidationResult[] {
+  const failures: ClueValidationResult[] = [];
+
+  // Validate flat clue list
+  for (let i = 0; i < data.clues.length; i++) {
+    const clue = data.clues[i];
+    const result = validateClue(
+      clue.clueText,
+      clue.correctResponse,
+      -1, // no category in rapid fire
+      i
+    );
+    if (!result.valid) {
+      failures.push(result);
+    }
+  }
+
+  // Validate Final Jeopardy
+  if (data.finalJeopardy) {
+    const result = validateClue(
+      data.finalJeopardy.clueText,
+      data.finalJeopardy.correctResponse,
+      -1,
+      -1
+    );
+    if (!result.valid) {
+      failures.push(result);
+    }
+  }
+
+  return failures;
+}
 
 /**
  * Validates all 31 clues (30 board + 1 Final Jeopardy).

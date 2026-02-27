@@ -13,6 +13,7 @@ interface ClueOverlayProps {
   countdownType: CountdownType | null;
   countdownTotalSeconds: number | null;
   revealedAnswer?: string | null;
+  subtopic?: string; // Rapid Fire mode subtopic label
 }
 
 export default function ClueOverlay({
@@ -26,6 +27,7 @@ export default function ClueOverlay({
   countdownType,
   countdownTotalSeconds,
   revealedAnswer,
+  subtopic,
 }: ClueOverlayProps) {
   return (
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 md:p-8">
@@ -42,6 +44,15 @@ export default function ClueOverlay({
                 {dailyDoublePlayerName} is wagering...
               </p>
             )}
+          </div>
+        )}
+
+        {/* Subtopic label (Rapid Fire) */}
+        {subtopic && clueState !== "daily_double_wager" && (
+          <div className="mb-2">
+            <span className="text-text-tertiary text-sm md:text-base uppercase tracking-widest font-medium">
+              {subtopic}
+            </span>
           </div>
         )}
 

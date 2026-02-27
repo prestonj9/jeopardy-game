@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIBoardResponse, Board, GenerateBoardRequest, GenerateBoardResponse } from "./types.ts";
-import { validateBoard, type ClueValidationResult } from "./clue-validator.ts";
+import type { AIBoardResponse, AIRapidFireResponse, Board, RapidFireClue, GenerateBoardRequest, GenerateBoardResponse, GenerateRapidFireResponse } from "./types.ts";
+import { validateBoard, validateRapidFireBoard, type ClueValidationResult } from "./clue-validator.ts";
 
 const client = new Anthropic();
 
@@ -140,6 +140,221 @@ function transformToBoard(data: AIBoardResponse): GenerateBoardResponse {
   };
 }
 
+// ── Rapid Fire Generation ────────────────────────────────────────────────────
+
+const RAPID_FIRE_SYSTEM_PROMPT = `You are a Jeopardy rapid-fire round generator. Create engaging, accurate trivia clues as a flat list.
+
+Rules:
+- Generate exactly the requested number of clues as a flat list (no categories or grid)
+- Each clue has a "subtopic" label — a short 1-3 word descriptor of the clue's subject area (e.g. "Ancient Rome", "Pop Music", "Chemistry", "Film Directors")
+- Vary the subtopics so the game covers a wide range of areas related to the source material
+- Each clue has a "value" representing difficulty: $200 (easy), $400, $600, $800, $1000 (expert)
+- Mix the difficulty levels randomly throughout the list — don't arrange them in order
+- Aim for a roughly even distribution of difficulty levels
+- Each clue must be a declarative statement (the "answer" in Jeopardy terms)
+- Each correctResponse must be phrased as a question: "What is..." or "Who is..."
+- Clues must be unambiguous with one clear correct response
+- Every correctResponse must be unique — no two clues should share the same answer
+- CRITICAL: The clueText must NEVER contain the answer. The correctResponse word(s) must not appear anywhere in the clueText, even partially.
+- Generate 1 Final Jeopardy clue with its own unique category name (separate from the main clues)
+
+CLUE-WRITING CRAFT:
+- Write clues as declarative statements in the style of real Jeopardy — describe the answer without revealing it.
+- Layer 2-3 converging hints per clue so the answer is uniquely determined.
+- Avoid starting every clue with "This..." — vary your sentence structure.
+- Never use the phrasing "This [answer]..." where the blank IS the answer.
+
+DIFFICULTY CALIBRATION:
+- $200: Everyday knowledge, pop culture, well-known facts. Most players should get these.
+- $400: Slightly more specific. Requires knowing a detail beyond the most obvious.
+- $600: Moderate difficulty. Requires solid general knowledge or a second-level association.
+- $800: Challenging. Requires deeper knowledge — specific dates, lesser-known works, technical details.
+- $1000: Expert-level. Requires specialized knowledge, obscure connections, or multi-step reasoning.
+
+ACCURACY REQUIREMENTS:
+- Accuracy is paramount. Only state facts you are highly confident about.
+- If you are unsure about a specific date, number, statistic, or attribution, choose a different fact you ARE certain about.
+- Before outputting, review every clue to verify: (1) the answer does not appear in the clue text, and (2) each fact stated is accurate.
+
+Respond with ONLY valid JSON — no markdown, no explanation, no code fences:
+{
+  "clues": [
+    { "value": 600, "subtopic": "Ancient Rome", "clueText": "string", "correctResponse": "string" },
+    { "value": 200, "subtopic": "Pop Music", "clueText": "string", "correctResponse": "string" }
+  ],
+  "finalJeopardy": {
+    "category": "string",
+    "clueText": "string",
+    "correctResponse": "string"
+  }
+}`;
+
+function buildRapidFireUserMessage(req: GenerateBoardRequest): string {
+  const count = req.clueCount ?? 10;
+
+  if (req.mode === "upload" && req.content) {
+    return `Generate exactly ${count} rapid-fire Jeopardy clues based on the following source material.
+
+Do not use outside knowledge — draw all clues from this content. Vary the subtopics across different aspects of the material.
+
+SOURCE MATERIAL:
+${req.content}`;
+  }
+
+  return `Generate exactly ${count} rapid-fire Jeopardy clues about: ${req.topic}
+Use your general knowledge. Make it fun and varied with diverse subtopics.`;
+}
+
+function transformToRapidFire(data: AIRapidFireResponse): GenerateRapidFireResponse {
+  const clues: RapidFireClue[] = data.clues.map((clue) => ({
+    clueText: clue.clueText,
+    correctResponse: clue.correctResponse,
+    value: clue.value,
+    subtopic: clue.subtopic,
+    isRevealed: false,
+  }));
+
+  return {
+    clues,
+    finalJeopardy: data.finalJeopardy,
+  };
+}
+
+async function fixFailingRapidFireClues(
+  board: AIRapidFireResponse,
+  failures: ClueValidationResult[]
+): Promise<AIRapidFireResponse> {
+  const clueDescriptions = failures.map((f, i) => {
+    if (f.categoryIndex === -1) {
+      return `${i + 1}. Final Jeopardy: clueText "${f.clueText}" correctResponse "${f.correctResponse}" — Problem: ${f.reason}`;
+    }
+    const clue = board.clues[f.clueIndex];
+    return `${i + 1}. Clue #${f.clueIndex + 1} (${clue?.subtopic ?? "Unknown"}, $${clue?.value ?? "?"}): clueText "${f.clueText}" correctResponse "${f.correctResponse}" — Problem: ${f.reason}`;
+  });
+
+  const userMessage = `Fix the following Jeopardy clues. Each clue reveals its answer in the clue text.
+Generate a replacement clue for each that does NOT contain the answer word(s).
+
+Clues to fix:
+${clueDescriptions.join("\n")}
+
+Respond with a JSON array of fixed clues:
+[{ "clueIndex": number, "clueText": "new clue text", "correctResponse": "same answer" }]
+
+Use clueIndex -1 for Final Jeopardy.`;
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 8000,
+      thinking: { type: "enabled", budget_tokens: 5000 },
+      system: FIX_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userMessage }],
+    });
+
+    const text = extractTextFromResponse(response.content);
+    const cleaned = text
+      .replace(/```json?\n?/g, "")
+      .replace(/```/g, "")
+      .trim();
+    const fixes: Array<{ clueIndex: number; clueText: string; correctResponse: string }> = JSON.parse(cleaned);
+
+    const patched = structuredClone(board);
+    for (const fix of fixes) {
+      if (fix.clueIndex === -1) {
+        patched.finalJeopardy.clueText = fix.clueText;
+        patched.finalJeopardy.correctResponse = fix.correctResponse;
+      } else if (patched.clues[fix.clueIndex]) {
+        patched.clues[fix.clueIndex].clueText = fix.clueText;
+        patched.clues[fix.clueIndex].correctResponse = fix.correctResponse;
+      }
+    }
+
+    return patched;
+  } catch (err) {
+    console.error("Failed to fix rapid fire clues, proceeding with original:", err);
+    return board;
+  }
+}
+
+export async function generateRapidFireBoard(
+  req: GenerateBoardRequest
+): Promise<GenerateRapidFireResponse> {
+  if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.includes("xxxxx")) {
+    throw new Error(
+      "Missing or invalid ANTHROPIC_API_KEY. Add a valid key to your .env.local file."
+    );
+  }
+
+  const userMessage = buildRapidFireUserMessage(req);
+
+  // Step 1: Generate the initial clue list (with retry on parse/network errors)
+  let parsed: AIRapidFireResponse | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await client.messages.create({
+        model: "claude-sonnet-4-5-20250929",
+        max_tokens: 16000,
+        thinking: { type: "enabled", budget_tokens: 10000 },
+        system: RAPID_FIRE_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userMessage }],
+      });
+
+      const text = extractTextFromResponse(response.content);
+      parsed = parseResponse(text) as unknown as AIRapidFireResponse;
+      break;
+    } catch (err) {
+      console.error(`Rapid fire generation attempt ${attempt + 1} failed:`, err);
+
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes("authentication") || errMsg.includes("401") || errMsg.includes("api-key")) {
+        throw new Error(
+          "Invalid API key. Please check your ANTHROPIC_API_KEY in .env.local."
+        );
+      }
+
+      if (attempt === 1) {
+        throw new Error(`Rapid fire generation failed: ${errMsg}`);
+      }
+    }
+  }
+
+  if (!parsed) {
+    throw new Error("Rapid fire generation failed — please try again.");
+  }
+
+  // Step 2: Validate and fix (up to MAX_VALIDATION_ROUNDS)
+  for (let round = 0; round < MAX_VALIDATION_ROUNDS; round++) {
+    const failures = validateRapidFireBoard(parsed);
+
+    if (failures.length === 0) {
+      console.log(
+        round === 0
+          ? "✓ All rapid fire clues passed validation"
+          : `✓ All rapid fire clues passed validation after ${round} fix round(s)`
+      );
+      break;
+    }
+
+    console.warn(
+      `⚠ Rapid fire validation round ${round + 1}: ${failures.length} clue(s) leak their answer:`,
+      failures.map((f) => `[${f.clueIndex}] ${f.reason}`)
+    );
+
+    if (round === MAX_VALIDATION_ROUNDS - 1) {
+      console.warn(
+        "Max validation rounds reached, accepting rapid fire clues with flagged issues"
+      );
+      break;
+    }
+
+    parsed = await fixFailingRapidFireClues(parsed, failures);
+  }
+
+  return transformToRapidFire(parsed);
+}
+
 // ── Fix Failing Clues ────────────────────────────────────────────────────────
 
 const FIX_SYSTEM_PROMPT = `You are a Jeopardy clue fixer. You will receive clues that have a problem: the answer is revealed in the clue text. Generate a replacement clue for each that does NOT contain the answer.
@@ -234,7 +449,12 @@ const MAX_VALIDATION_ROUNDS = 2;
 
 export async function generateBoard(
   req: GenerateBoardRequest
-): Promise<GenerateBoardResponse> {
+): Promise<GenerateBoardResponse | GenerateRapidFireResponse> {
+  // Dispatch to rapid fire if requested
+  if (req.gameMode === "rapid_fire") {
+    return generateRapidFireBoard(req);
+  }
+
   if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.includes("xxxxx")) {
     throw new Error(
       "Missing or invalid ANTHROPIC_API_KEY. Add a valid key to your .env.local file."

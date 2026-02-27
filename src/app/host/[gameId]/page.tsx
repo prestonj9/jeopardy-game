@@ -99,7 +99,6 @@ export default function DisplayPage() {
       <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
         <InteractiveHero />
         <div className="text-center max-w-md relative z-10">
-          <div className="animate-spin w-12 h-12 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}
             className="text-text-secondary text-xl animate-[fadeIn_0.5s_ease-in] min-h-[3.5rem]"
@@ -241,6 +240,97 @@ export default function DisplayPage() {
         )?.name
       : undefined;
 
+  const isRapidFire = gameState.gameMode === "rapid_fire";
+
+  // Rapid Fire Display
+  if (isRapidFire) {
+    const hasActiveClue = gameState.currentClue && activeClueText;
+    const allCluesDone = gameState.currentClueIndex >= gameState.totalClues - 1 && !gameState.currentClue;
+    const notStarted = gameState.currentClueIndex === -1 && !gameState.currentClue;
+
+    return (
+      <div className="min-h-screen bg-white flex flex-col relative">
+        {gameOverlay}
+        {audioPrompt}
+
+        {/* Progress bar */}
+        <div className="px-6 pt-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-text-secondary text-sm font-medium">
+              {notStarted
+                ? `Rapid Fire — ${gameState.totalClues} Clues`
+                : allCluesDone
+                ? "All Clues Complete!"
+                : `Clue ${gameState.currentClueIndex + 1} of ${gameState.totalClues}`}
+            </span>
+            {!notStarted && gameState.currentClueIndex >= 0 && (
+              <span className="text-text-tertiary text-sm">
+                {gameState.rapidFireClues.filter((c) => c.isRevealed).length} answered
+              </span>
+            )}
+          </div>
+          <div className="w-full h-2 bg-surface rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-accent to-accent-cyan rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${gameState.totalClues > 0 ? (gameState.rapidFireClues.filter((c) => c.isRevealed).length / gameState.totalClues) * 100 : 0}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <div className="flex-1 flex items-center justify-center p-6">
+          {notStarted && (
+            <div className="text-center">
+              <h2 className="text-5xl font-bold text-gradient-accent mb-4">Rapid Fire</h2>
+              <p className="text-text-secondary text-2xl">{gameState.totalClues} Clues</p>
+              <p className="text-text-tertiary text-lg mt-2">Waiting for host to start...</p>
+            </div>
+          )}
+
+          {allCluesDone && (
+            <div className="text-center">
+              <h2 className="text-4xl font-bold text-gradient-accent mb-4">All Clues Complete!</h2>
+              <p className="text-text-secondary text-xl">Final Jeopardy is up next</p>
+            </div>
+          )}
+
+          {!hasActiveClue && !notStarted && !allCluesDone && (
+            <div className="text-center">
+              <p className="text-text-tertiary text-lg">Waiting for next clue...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Scoreboard — always visible at bottom */}
+        <div className="p-4 border-t border-border">
+          <Scoreboard
+            players={gameState.players}
+            activePlayerId={gameState.currentClue?.answeringPlayerId}
+          />
+        </div>
+
+        {/* Clue Overlay — shows during active clue */}
+        {hasActiveClue && (
+          <ClueOverlay
+            clueText={activeClueText!}
+            value={activeClueValue}
+            clueState={gameState.currentClue!.state}
+            answeringPlayerName={answeringPlayerName}
+            isDailyDouble={false}
+            buzzCountdown={buzzCountdown}
+            countdownType={countdownType}
+            countdownTotalSeconds={countdownTotalSeconds}
+            revealedAnswer={revealedAnswer}
+            subtopic={gameState.rapidFireClues[gameState.currentClueIndex]?.subtopic}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Classic Display
   return (
     <div className="min-h-screen bg-white flex flex-col relative">
       {gameOverlay}
