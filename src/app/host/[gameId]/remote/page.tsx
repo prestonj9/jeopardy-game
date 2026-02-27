@@ -9,6 +9,7 @@ import RemoteClueView from "@/components/RemoteClueView";
 import Scoreboard from "@/components/Scoreboard";
 import Lobby from "@/components/Lobby";
 import FinalJeopardy from "@/components/FinalJeopardy";
+import InteractiveHero from "@/components/InteractiveHero";
 import { LOADING_MESSAGES } from "@/lib/constants";
 
 export default function HostRemotePage() {
@@ -173,8 +174,9 @@ export default function HostRemotePage() {
   // ── New Round Loading ───────────────────────────────────────
   if (isNewRoundLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <div className="text-center max-w-sm">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6 relative overflow-hidden">
+        <InteractiveHero />
+        <div className="text-center max-w-sm relative z-10">
           <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}

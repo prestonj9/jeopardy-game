@@ -9,6 +9,7 @@ import BuzzButton from "@/components/BuzzButton";
 import Scoreboard from "@/components/Scoreboard";
 import WagerInput from "@/components/WagerInput";
 import FinalJeopardy from "@/components/FinalJeopardy";
+import InteractiveHero from "@/components/InteractiveHero";
 import { LOADING_MESSAGES } from "@/lib/constants";
 
 export default function PlayerGamePage() {
@@ -200,8 +201,9 @@ export default function PlayerGamePage() {
   // New Round Loading
   if (isNewRoundLoading) {
     return (
-      <div className="min-h-[100dvh] bg-white flex items-center justify-center p-4">
-        <div className="text-center max-w-sm">
+      <div className="min-h-[100dvh] bg-white flex items-center justify-center p-4 relative overflow-hidden">
+        <InteractiveHero />
+        <div className="text-center max-w-sm relative z-10">
           <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}

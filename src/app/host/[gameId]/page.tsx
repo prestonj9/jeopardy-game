@@ -12,6 +12,7 @@ import DisplayLobby from "@/components/DisplayLobby";
 import FinalJeopardy from "@/components/FinalJeopardy";
 import QRCodeDisplay from "@/components/QRCode";
 import GameMenu from "@/components/GameMenu";
+import InteractiveHero from "@/components/InteractiveHero";
 import { LOADING_MESSAGES } from "@/lib/constants";
 
 export default function DisplayPage() {
@@ -95,8 +96,9 @@ export default function DisplayPage() {
   // New Round Loading
   if (isNewRoundLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
+        <InteractiveHero />
+        <div className="text-center max-w-md relative z-10">
           <div className="animate-spin w-12 h-12 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6" />
           <p
             key={messageIndex}

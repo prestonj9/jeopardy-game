@@ -300,8 +300,9 @@ export function registerSocketHandlers(io: TypedServer): void {
         io.to(game.id).emit("game:state_sync", serializeGameState(game));
       } else if (game.boardStatus === "generating") {
         // Board still generating — queue the start (auto-starts when ready)
+        // Show loading screen on all clients while we wait for generation
         game.startRequested = true;
-        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+        io.to(game.id).emit("game:new_round_loading");
       } else if (game.boardStatus === "failed") {
         socket.emit("game:error", {
           message: game.boardError || "Board generation failed. Tap retry to try again.",
