@@ -84,6 +84,7 @@ export function createGame(
     finalAnswerTimer: null,
     lastCorrectPlayerId: null,
     createdAt: Date.now(),
+    round: 1,
     rapidFireClues: [],
     currentClueIndex: -1,
   };
@@ -143,6 +144,7 @@ export function createGameWithBackground(
     finalAnswerTimer: null,
     lastCorrectPlayerId: null,
     createdAt: Date.now(),
+    round: 1,
     rapidFireClues: [],
     currentClueIndex: -1,
   };
@@ -302,7 +304,8 @@ export function resetGameForNewRound(
   game: Game,
   newBoard: Board,
   newFinalJeopardy: { category: string; clueText: string; correctResponse: string },
-  newRapidFireClues?: RapidFireClue[]
+  newRapidFireClues?: RapidFireClue[],
+  resetScores: boolean = true
 ): void {
   game.board = newBoard;
   game.boardStatus = "ready";
@@ -312,6 +315,7 @@ export function resetGameForNewRound(
   game.currentClue = null;
   game.buzzOrder = [];
   game.lastCorrectPlayerId = null;
+  game.round += 1;
 
   // Rapid fire reset
   if (newRapidFireClues) {
@@ -349,9 +353,11 @@ export function resetGameForNewRound(
     preRevealScores: {},
   };
 
-  // Reset all player scores to 0 and clear final jeopardy answers
+  // Reset player state for new round
   for (const player of game.players.values()) {
-    player.score = 0;
+    if (resetScores) {
+      player.score = 0;
+    }
     player.finalWager = null;
     player.finalAnswer = null;
   }
@@ -418,6 +424,7 @@ export function serializeGameState(game: Game): SerializableGameState {
     scores: getScoreMap(game),
     boardStatus: game.boardStatus,
     boardError: game.boardError,
+    round: game.round,
     // Rapid fire fields (strip correctResponse for players)
     rapidFireClues: game.rapidFireClues.map((clue) => ({
       clueText: clue.clueText,

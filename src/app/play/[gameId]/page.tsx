@@ -449,6 +449,7 @@ export default function PlayerGamePage() {
         <Scoreboard
           players={gameState.players}
           activePlayerId={currentClue?.answeringPlayerId}
+          round={gameState.round}
         />
       </div>
     </div>

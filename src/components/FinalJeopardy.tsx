@@ -18,6 +18,7 @@ interface FinalJeopardyProps {
   onSubmitWager?: (amount: number) => void;
   onSubmitAnswer?: (answer: string) => void;
   onRevealAdvance?: () => void;
+  onNewRound?: (topic: string, resetScores: boolean) => void;
   lastFinalResult?: {
     playerId: string;
     playerName: string;
@@ -105,6 +106,7 @@ export default function FinalJeopardy({
   onSubmitWager,
   onSubmitAnswer,
   onRevealAdvance,
+  onNewRound,
   countdown,
   countdownTotal,
   revealOrder,
@@ -116,6 +118,9 @@ export default function FinalJeopardy({
   const [answer, setAnswer] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState(false);
   const [submittedWager, setSubmittedWager] = useState(false);
+  const [showNewRoundForm, setShowNewRoundForm] = useState(false);
+  const [newRoundTopic, setNewRoundTopic] = useState("");
+  const [resetScores, setResetScores] = useState(false);
 
   const myPlayer = players.find((p) => p.id === myPlayerId);
 
@@ -671,14 +676,79 @@ export default function FinalJeopardy({
                 </div>
               )}
 
-              {isHost && (
-                <button
-                  onClick={onAdvance}
-                  className="px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90 animate-fade-in"
-                  style={{ animationDelay: "1s", animationFillMode: "forwards", opacity: 0 }}
-                >
-                  Finish Game
-                </button>
+              {isHost && !showNewRoundForm && (
+                <div className="flex gap-3 justify-center animate-fade-in" style={{ animationDelay: "1s", animationFillMode: "forwards", opacity: 0 }}>
+                  <button
+                    onClick={() => setShowNewRoundForm(true)}
+                    className="px-8 py-4 bg-gradient-to-r from-accent to-accent-cyan text-white font-bold text-xl rounded-full hover:opacity-90 transition-all"
+                  >
+                    New Round
+                  </button>
+                  <button
+                    onClick={onAdvance}
+                    className="px-8 py-4 bg-surface border-2 border-border text-text-primary font-bold text-xl rounded-full hover:bg-surface-hover transition-all"
+                  >
+                    Finish Game
+                  </button>
+                </div>
+              )}
+
+              {/* New Round Form */}
+              {isHost && showNewRoundForm && (
+                <div className="w-full max-w-sm mx-auto animate-fade-in">
+                  <div className="bg-surface rounded-2xl p-5 border border-border">
+                    <h3 className="text-lg font-bold text-text-primary mb-3 text-center">New Round</h3>
+                    <input
+                      type="text"
+                      value={newRoundTopic}
+                      onChange={(e) => setNewRoundTopic(e.target.value)}
+                      placeholder="Enter a topic..."
+                      maxLength={500}
+                      className="w-full px-4 py-3 rounded-lg bg-white border border-border text-text-primary placeholder-text-tertiary text-base focus:outline-none focus:ring-2 focus:ring-accent mb-3"
+                      autoFocus
+                    />
+
+                    {/* Reset scores toggle */}
+                    <label className="flex items-center justify-between px-1 mb-4 cursor-pointer">
+                      <span className="text-text-secondary text-sm">Reset scores to $0</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={resetScores}
+                        onClick={() => setResetScores(!resetScores)}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${
+                          resetScores ? "bg-accent" : "bg-border"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                            resetScores ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </label>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setShowNewRoundForm(false);
+                          setNewRoundTopic("");
+                          setResetScores(false);
+                        }}
+                        className="flex-1 py-3 rounded-lg font-bold text-base bg-white border border-border text-text-secondary hover:bg-surface-hover transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => onNewRound?.(newRoundTopic.trim(), resetScores)}
+                        disabled={!newRoundTopic.trim()}
+                        className="flex-1 py-3 rounded-lg font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-accent to-accent-cyan text-white hover:opacity-90"
+                      >
+                        Go
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </>

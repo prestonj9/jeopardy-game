@@ -770,7 +770,9 @@ export function registerSocketHandlers(io: TypedServer): void {
       if (!result || !result.isHost) return;
       const { game } = result;
 
-      if (game.status !== "finished") {
+      // Allow new round from finished state OR directly from winner podium
+      const isWinnerState = game.finalJeopardy.state === "winner";
+      if (game.status !== "finished" && !isWinnerState) {
         socket.emit("game:error", { message: "Game must be finished to start a new round" });
         return;
       }
@@ -781,11 +783,13 @@ export function registerSocketHandlers(io: TypedServer): void {
         return;
       }
 
+      const resetScores = data.resetScores ?? true;
+
       // Notify all clients to show loading screen
       io.to(game.id).emit("game:new_round_loading");
 
       try {
-        console.log(`[new_round] Generating ${game.gameMode} board for topic: "${topic}" in game ${game.id}`);
+        console.log(`[new_round] Generating ${game.gameMode} board for topic: "${topic}" in game ${game.id} (resetScores: ${resetScores})`);
         const genResult = await generateBoard({
           mode: "topic",
           topic,
@@ -795,10 +799,10 @@ export function registerSocketHandlers(io: TypedServer): void {
 
         if (game.gameMode === "rapid_fire") {
           const rfResult = genResult as GenerateRapidFireResponse;
-          resetGameForNewRound(game, game.board, rfResult.finalJeopardy, rfResult.clues);
+          resetGameForNewRound(game, game.board, rfResult.finalJeopardy, rfResult.clues, resetScores);
         } else {
           const classicResult = genResult as GenerateBoardResponse;
-          resetGameForNewRound(game, classicResult.board, classicResult.finalJeopardy);
+          resetGameForNewRound(game, classicResult.board, classicResult.finalJeopardy, undefined, resetScores);
         }
 
         console.log(`[new_round] Board generated, game ${game.id} reset to active`);

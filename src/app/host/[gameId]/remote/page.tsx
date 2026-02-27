@@ -125,6 +125,14 @@ export default function HostRemotePage() {
     socket.emit("host:new_round", { topic: newRoundTopic.trim() });
   }, [socket, newRoundTopic]);
 
+  const handleNewRoundFromWinner = useCallback(
+    (topic: string, resetScores: boolean) => {
+      if (!socket || !topic.trim()) return;
+      socket.emit("host:new_round", { topic: topic.trim(), resetScores });
+    },
+    [socket]
+  );
+
   // Reset local state when a new round starts
   useEffect(() => {
     if (gameState?.status === "active" && !gameState.currentClue) {
@@ -225,6 +233,7 @@ export default function HostRemotePage() {
         onAdvance={handleAdvanceFinal}
         onJudge={handleJudgeFinal}
         onRevealAdvance={handleRevealAdvance}
+        onNewRound={handleNewRoundFromWinner}
         lastFinalResult={lastFinalResult}
         countdown={countdownType === "final_answer" ? buzzCountdown : null}
         countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
@@ -384,6 +393,7 @@ export default function HostRemotePage() {
           <Scoreboard
             players={gameState.players}
             activePlayerId={gameState.currentClue?.answeringPlayerId}
+            round={gameState.round}
           />
         </div>
       </div>

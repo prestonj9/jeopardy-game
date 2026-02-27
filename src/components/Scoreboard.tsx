@@ -13,9 +13,10 @@ interface ScoreboardProps {
   players: SerializablePlayer[];
   activePlayerId?: string | null;
   boardControlPlayerId?: string | null;
+  round?: number;
 }
 
-export default function Scoreboard({ players, activePlayerId, boardControlPlayerId }: ScoreboardProps) {
+export default function Scoreboard({ players, activePlayerId, boardControlPlayerId, round }: ScoreboardProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
   const prevScoresRef = useRef<Record<string, number>>({});
   const [deltas, setDeltas] = useState<ScoreDelta[]>([]);
@@ -73,6 +74,13 @@ export default function Scoreboard({ players, activePlayerId, boardControlPlayer
 
   return (
     <div className="w-full bg-surface/80 backdrop-blur-sm rounded-2xl p-4 border border-border">
+      {round && round >= 2 && (
+        <div className="text-center mb-2">
+          <span className="text-text-tertiary text-xs font-semibold uppercase tracking-widest">
+            Round {round}
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap gap-4 justify-center">
         {sorted.map((player) => {
           const isAnswering = player.id === activePlayerId;

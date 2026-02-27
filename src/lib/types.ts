@@ -137,6 +137,7 @@ export interface Game {
   finalAnswerTimer: ReturnType<typeof setTimeout> | null;
   lastCorrectPlayerId: string | null;
   createdAt: number;
+  round: number; // 1-based round counter
   // Rapid Fire mode fields
   rapidFireClues: RapidFireClue[];
   currentClueIndex: number; // -1 = not started, 0..N-1 = current clue
@@ -214,6 +215,7 @@ export interface SerializableGameState {
   scores: ScoreMap;
   boardStatus: "generating" | "ready" | "failed";
   boardError?: string;
+  round: number;
   // Rapid Fire mode fields
   rapidFireClues: SerializableRapidFireClue[];
   currentClueIndex: number;
@@ -373,7 +375,7 @@ export interface ClientToServerEvents {
   "player:daily_double_wager": (data: { amount: number }) => void;
   "player:final_wager": (data: { amount: number }) => void;
   "player:final_answer": (data: { answer: string }) => void;
-  "host:new_round": (data: { topic: string }) => void;
+  "host:new_round": (data: { topic: string; resetScores?: boolean }) => void;
   "host:retry_generation": () => void;
 }
 
