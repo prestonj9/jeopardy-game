@@ -42,7 +42,7 @@ function AnimatedScore({ from, to, active }: { from: number; to: number; active:
 
   useEffect(() => {
     if (!active) {
-      setDisplay(from);
+      setDisplay(to);
       return;
     }
     const duration = 1500;
@@ -396,10 +396,10 @@ export default function FinalJeopardy({
                       )}
                     </div>
 
-                    {/* Answer — show for "me" always when revealed, for others show outcome only */}
+                    {/* Answer — show on host, display, and for the player themselves */}
                     {isAnswerShown(playerId) && (
                       <div className="animate-fade-in">
-                        {(isMe || isHost) ? (
+                        {(isMe || isHost || !myPlayerId) ? (
                           <p className="text-text-primary text-sm mb-2 italic">
                             &quot;{sub?.answer || "(no answer)"}&quot;
                           </p>
