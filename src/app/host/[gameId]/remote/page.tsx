@@ -205,6 +205,8 @@ export default function HostRemotePage() {
         onAdvance={handleAdvanceFinal}
         onJudge={handleJudgeFinal}
         lastFinalResult={lastFinalResult}
+        countdown={countdownType === "final_answer" ? buzzCountdown : null}
+        countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
       />
     );
   }

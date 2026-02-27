@@ -66,6 +66,7 @@ export function createGame(
       state: "not_started",
       submissions: new Map(),
     },
+    finalAnswerTimer: null,
     lastCorrectPlayerId: null,
     createdAt: Date.now(),
   };
@@ -174,6 +175,10 @@ export function resetGameForNewRound(
   if (game.answerTimer) {
     clearTimeout(game.answerTimer);
     game.answerTimer = null;
+  }
+  if (game.finalAnswerTimer) {
+    clearTimeout(game.finalAnswerTimer);
+    game.finalAnswerTimer = null;
   }
 
   game.finalJeopardy = {

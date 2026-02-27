@@ -34,6 +34,7 @@ type TypedSocket = Socket<
 const BUZZ_DELAY_SECONDS = 5;
 const BUZZ_WINDOW_SECONDS = 10;
 const ANSWER_SECONDS = 5;
+const FINAL_ANSWER_SECONDS = 30;
 
 /** Clear any running buzz delay timer for a game */
 function clearBuzzTimer(game: Game): void {
@@ -57,10 +58,18 @@ function clearAnswerTimer(game: Game): void {
   }
 }
 
+function clearFinalAnswerTimer(game: Game): void {
+  if (game.finalAnswerTimer) {
+    clearTimeout(game.finalAnswerTimer);
+    game.finalAnswerTimer = null;
+  }
+}
+
 function clearAllTimers(game: Game): void {
   clearBuzzTimer(game);
   clearBuzzWindowTimer(game);
   clearAnswerTimer(game);
+  clearFinalAnswerTimer(game);
 }
 
 /** Start a countdown that auto-opens buzzers after BUZZ_DELAY_SECONDS */
@@ -172,6 +181,41 @@ function startAnswerCountdown(io: TypedServer, game: Game): void {
   };
 
   game.answerTimer = setTimeout(tick, 1000);
+}
+
+/** Final Jeopardy answer timer. On expiry: auto-advance to judging. */
+function startFinalAnswerCountdown(io: TypedServer, game: Game): void {
+  let countdown = FINAL_ANSWER_SECONDS;
+
+  io.to(game.id).emit("game:buzz_countdown", {
+    secondsRemaining: countdown,
+    type: "final_answer",
+    totalSeconds: FINAL_ANSWER_SECONDS,
+  });
+
+  const tick = () => {
+    countdown--;
+    io.to(game.id).emit("game:buzz_countdown", {
+      secondsRemaining: countdown,
+      type: "final_answer",
+      totalSeconds: FINAL_ANSWER_SECONDS,
+    });
+    if (countdown > 0) {
+      game.finalAnswerTimer = setTimeout(tick, 1000);
+    } else {
+      // Time's up — auto-advance to judging
+      game.finalAnswerTimer = null;
+      if (game.finalJeopardy.state === "answering") {
+        game.finalJeopardy.state = "judging";
+        io.to(game.id).emit("game:final_advanced", {
+          newState: "judging",
+        });
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+      }
+    }
+  };
+
+  game.finalAnswerTimer = setTimeout(tick, 1000);
 }
 
 export function registerSocketHandlers(io: TypedServer): void {
@@ -435,6 +479,12 @@ export function registerSocketHandlers(io: TypedServer): void {
       io.to(game.id).emit("game:final_started", {
         category: game.finalJeopardy.category,
       });
+
+      // Send correct response to host only
+      socket.emit("game:host_clue_answer", {
+        correctResponse: game.finalJeopardy.correctResponse,
+      });
+
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 
@@ -447,8 +497,7 @@ export function registerSocketHandlers(io: TypedServer): void {
       const fj = game.finalJeopardy;
       const transitions: Record<string, string> = {
         show_category: "wagering",
-        wagering: "show_clue",
-        show_clue: "answering",
+        wagering: "answering",
         answering: "judging",
         judging: "results",
       };
@@ -458,10 +507,15 @@ export function registerSocketHandlers(io: TypedServer): void {
 
       fj.state = nextState as FinalState;
 
-      if (nextState === "show_clue" || nextState === "answering") {
+      if (nextState === "answering") {
         io.to(game.id).emit("game:final_clue", {
           clueText: fj.clueText,
         });
+        startFinalAnswerCountdown(io, game);
+      }
+
+      if (nextState === "judging") {
+        clearFinalAnswerTimer(game);
       }
 
       io.to(game.id).emit("game:final_advanced", {

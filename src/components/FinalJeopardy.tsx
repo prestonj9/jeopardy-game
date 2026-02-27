@@ -24,6 +24,8 @@ interface FinalJeopardyProps {
     wager: number;
     answer: string;
   } | null;
+  countdown?: number | null;
+  countdownTotal?: number | null;
 }
 
 export default function FinalJeopardy({
@@ -40,6 +42,8 @@ export default function FinalJeopardy({
   onSubmitWager,
   onSubmitAnswer,
   lastFinalResult,
+  countdown,
+  countdownTotal,
 }: FinalJeopardyProps) {
   const [answer, setAnswer] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState(false);
@@ -125,8 +129,8 @@ export default function FinalJeopardy({
         </div>
       )}
 
-      {/* Show Clue / Answering */}
-      {(state === "show_clue" || state === "answering") && (
+      {/* Answering */}
+      {state === "answering" && (
         <div className="text-center w-full max-w-2xl">
           <p className="text-text-secondary text-sm uppercase tracking-wider mb-2">
             {category}
@@ -134,6 +138,22 @@ export default function FinalJeopardy({
           <p className="text-text-primary text-2xl md:text-4xl font-medium leading-relaxed mb-8">
             {clueText}
           </p>
+
+          {countdown != null && countdownTotal != null && (
+            <div className="max-w-md mx-auto mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className={`text-2xl font-bold tabular-nums ${countdown <= 5 ? "text-danger" : "text-accent"}`}>
+                  {countdown}s
+                </span>
+              </div>
+              <div className="w-full h-2 bg-surface rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ease-linear ${countdown <= 5 ? "bg-danger" : "bg-accent"}`}
+                  style={{ width: `${(countdown / countdownTotal) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {isHost && correctResponse && (
             <div className="max-w-xl mx-auto mb-6 p-4 border-2 border-accent/30 rounded-xl bg-accent/5">

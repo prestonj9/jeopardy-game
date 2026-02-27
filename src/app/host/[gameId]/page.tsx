@@ -187,6 +187,8 @@ export default function DisplayPage() {
           players={gameState.players}
           submissions={gameState.finalJeopardy.submissions}
           lastFinalResult={lastFinalResult}
+          countdown={countdownType === "final_answer" ? buzzCountdown : null}
+          countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
         />
       </div>
     );

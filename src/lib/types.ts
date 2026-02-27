@@ -26,7 +26,6 @@ export const FinalState = {
   NOT_STARTED: "not_started",
   SHOW_CATEGORY: "show_category",
   WAGERING: "wagering",
-  SHOW_CLUE: "show_clue",
   ANSWERING: "answering",
   JUDGING: "judging",
   RESULTS: "results",
@@ -88,7 +87,7 @@ export interface FinalJeopardyState {
 
 // ── Countdown Type ────────────────────────────────────────────────────────────
 
-export type CountdownType = "reading" | "buzz_window" | "answer";
+export type CountdownType = "reading" | "buzz_window" | "answer" | "final_answer";
 
 export interface Game {
   id: string; // nanoid, 6 chars uppercase — also the join code
@@ -103,6 +102,7 @@ export interface Game {
   buzzWindowTimer: ReturnType<typeof setTimeout> | null; // 10s buzz-in window
   answerTimer: ReturnType<typeof setTimeout> | null; // 5s answer countdown
   finalJeopardy: FinalJeopardyState;
+  finalAnswerTimer: ReturnType<typeof setTimeout> | null;
   lastCorrectPlayerId: string | null;
   createdAt: number;
 }

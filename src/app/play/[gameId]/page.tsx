@@ -17,7 +17,7 @@ export default function PlayerGamePage() {
   const gameId = params.gameId as string;
   const playerName = searchParams.get("name") || "Player";
   const { socket, isConnected } = useSocket();
-  const { gameState, lastJudgeResult, lastFinalResult, buzzCountdown, countdownTotalSeconds, isNewRoundLoading, revealedAnswer } =
+  const { gameState, lastJudgeResult, lastFinalResult, buzzCountdown, countdownType, countdownTotalSeconds, isNewRoundLoading, revealedAnswer } =
     useGameState(socket);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -242,6 +242,8 @@ export default function PlayerGamePage() {
         onSubmitWager={handleFinalWager}
         onSubmitAnswer={handleFinalAnswer}
         lastFinalResult={lastFinalResult}
+        countdown={countdownType === "final_answer" ? buzzCountdown : null}
+        countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
       />
     );
   }
