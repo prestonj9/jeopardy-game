@@ -340,6 +340,7 @@ export interface ServerToClientEvents {
   "game:new_round_loading": () => void;
   "game:board_ready": () => void;
   "game:board_failed": (data: { error: string }) => void;
+  "game:confetti_burst": (data: { playerName: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -377,6 +378,7 @@ export interface ClientToServerEvents {
   "player:final_answer": (data: { answer: string }) => void;
   "host:new_round": (data: { topic: string; resetScores?: boolean }) => void;
   "host:retry_generation": () => void;
+  "player:confetti": () => void;
 }
 
 export interface InterServerEvents {

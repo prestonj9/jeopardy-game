@@ -12,6 +12,7 @@ import DisplayLobby from "@/components/DisplayLobby";
 import FinalJeopardy from "@/components/FinalJeopardy";
 import QRCodeDisplay from "@/components/QRCode";
 import GameMenu from "@/components/GameMenu";
+import BurstConfetti, { ConfettiBurst } from "@/components/BurstConfetti";
 import InteractiveHero from "@/components/InteractiveHero";
 import { LOADING_MESSAGES } from "@/lib/constants";
 
@@ -28,6 +29,7 @@ export default function DisplayPage() {
   const [socketError, setSocketError] = useState<string | null>(null);
   const [showJoinQR, setShowJoinQR] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
+  const [confettiBursts, setConfettiBursts] = useState<ConfettiBurst[]>([]);
 
   // Rotating loading messages for new round
   useEffect(() => {
@@ -70,6 +72,29 @@ export default function DisplayPage() {
       socket.off("game:clue_complete");
     };
   }, [socket, isConnected, gameId]);
+
+  // Listen for player confetti bursts
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleBurst = (data: { playerName: string }) => {
+      const burst: ConfettiBurst = {
+        id: Date.now() + Math.random(),
+        playerName: data.playerName,
+        x: 10 + Math.random() * 80, // 10-90%
+      };
+      setConfettiBursts((prev) => [...prev, burst]);
+      // Auto-remove after 2s
+      setTimeout(() => {
+        setConfettiBursts((prev) => prev.filter((b) => b.id !== burst.id));
+      }, 2000);
+    };
+
+    socket.on("game:confetti_burst", handleBurst);
+    return () => {
+      socket.off("game:confetti_burst", handleBurst);
+    };
+  }, [socket]);
 
   if (!gameState) {
     return (
@@ -197,6 +222,7 @@ export default function DisplayPage() {
           judgments={gameState.finalJeopardy.judgments}
           preRevealScores={gameState.finalJeopardy.preRevealScores}
         />
+        <BurstConfetti bursts={confettiBursts} />
       </div>
     );
   }
@@ -220,6 +246,7 @@ export default function DisplayPage() {
           judgments={{}}
           preRevealScores={{}}
         />
+        <BurstConfetti bursts={confettiBursts} />
       </div>
     );
   }

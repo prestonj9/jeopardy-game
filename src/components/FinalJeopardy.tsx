@@ -19,6 +19,7 @@ interface FinalJeopardyProps {
   onSubmitAnswer?: (answer: string) => void;
   onRevealAdvance?: () => void;
   onNewRound?: (topic: string, resetScores: boolean) => void;
+  onTapConfetti?: () => void;
   lastFinalResult?: {
     playerId: string;
     playerName: string;
@@ -69,25 +70,35 @@ function AnimatedScore({ from, to, active }: { from: number; to: number; active:
   );
 }
 
-// Confetti component
+// Confetti colors shared across components
+const CONFETTI_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899"];
+
+// Confetti component — enhanced with more pieces, drift, and second wave
 function Confetti() {
+  const pieces = Array.from({ length: 120 }).map((_, i) => {
+    const isSecondWave = i >= 80;
+    const drift = (Math.random() - 0.5) * 60; // -30px to +30px
+    return (
+      <div
+        key={i}
+        className="absolute animate-confetti"
+        style={{
+          left: `${Math.random() * 100}%`,
+          animationDelay: `${(isSecondWave ? 1.5 : 0) + Math.random() * 2}s`,
+          animationDuration: `${2 + Math.random() * 3}s`,
+          backgroundColor: CONFETTI_COLORS[i % 6],
+          width: `${6 + Math.random() * 10}px`,
+          height: `${6 + Math.random() * 10}px`,
+          borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+          "--drift": `${drift}px`,
+        } as React.CSSProperties}
+      />
+    );
+  });
+
   return (
     <div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden">
-      {Array.from({ length: 50 }).map((_, i) => (
-        <div
-          key={i}
-          className="absolute animate-confetti"
-          style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 2}s`,
-            animationDuration: `${2 + Math.random() * 3}s`,
-            backgroundColor: ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899"][i % 6],
-            width: `${6 + Math.random() * 8}px`,
-            height: `${6 + Math.random() * 8}px`,
-            borderRadius: Math.random() > 0.5 ? "50%" : "2px",
-          }}
-        />
-      ))}
+      {pieces}
     </div>
   );
 }
@@ -107,6 +118,7 @@ export default function FinalJeopardy({
   onSubmitAnswer,
   onRevealAdvance,
   onNewRound,
+  onTapConfetti,
   countdown,
   countdownTotal,
   revealOrder,
@@ -119,6 +131,7 @@ export default function FinalJeopardy({
   const [submittedAnswer, setSubmittedAnswer] = useState(false);
   const [submittedWager, setSubmittedWager] = useState(false);
   const [showNewRoundForm, setShowNewRoundForm] = useState(false);
+  const [confettiTaps, setConfettiTaps] = useState(0);
   const [newRoundTopic, setNewRoundTopic] = useState("");
   const [resetScores, setResetScores] = useState(false);
 
@@ -691,6 +704,23 @@ export default function FinalJeopardy({
                     Finish Game
                   </button>
                 </div>
+              )}
+
+              {/* Player tap-to-celebrate */}
+              {!isHost && onTapConfetti && (
+                <button
+                  onClick={() => {
+                    onTapConfetti();
+                    setConfettiTaps((t) => t + 1);
+                    navigator.vibrate?.(50);
+                  }}
+                  className="animate-fade-in active:scale-95 transition-transform"
+                  style={{ animationDelay: "1s", animationFillMode: "forwards", opacity: 0 }}
+                >
+                  <span className="text-2xl">
+                    {confettiTaps === 0 ? "🎉 Tap to celebrate!" : `🎉 × ${confettiTaps}`}
+                  </span>
+                </button>
               )}
 
               {/* New Round Form */}

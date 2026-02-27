@@ -9,6 +9,7 @@ import RemoteClueView from "@/components/RemoteClueView";
 import Scoreboard from "@/components/Scoreboard";
 import Lobby from "@/components/Lobby";
 import FinalJeopardy from "@/components/FinalJeopardy";
+import BurstConfetti, { ConfettiBurst } from "@/components/BurstConfetti";
 import InteractiveHero from "@/components/InteractiveHero";
 import { LOADING_MESSAGES } from "@/lib/constants";
 
@@ -25,6 +26,7 @@ export default function HostRemotePage() {
   const [newRoundTopic, setNewRoundTopic] = useState("");
   const [messageIndex, setMessageIndex] = useState(0);
   const [startRequested, setStartRequested] = useState(false);
+  const [confettiBursts, setConfettiBursts] = useState<ConfettiBurst[]>([]);
 
   // Join game room as host controller
   useEffect(() => {
@@ -153,6 +155,29 @@ export default function HostRemotePage() {
     return () => clearInterval(interval);
   }, [isNewRoundLoading]);
 
+  // Listen for player confetti bursts
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleBurst = (data: { playerName: string }) => {
+      const burst: ConfettiBurst = {
+        id: Date.now() + Math.random(),
+        playerName: data.playerName,
+        x: 10 + Math.random() * 80, // 10-90%
+      };
+      setConfettiBursts((prev) => [...prev, burst]);
+      // Auto-remove after 2s
+      setTimeout(() => {
+        setConfettiBursts((prev) => prev.filter((b) => b.id !== burst.id));
+      }, 2000);
+    };
+
+    socket.on("game:confetti_burst", handleBurst);
+    return () => {
+      socket.off("game:confetti_burst", handleBurst);
+    };
+  }, [socket]);
+
   // Haptic feedback when a player buzzes in
   useEffect(() => {
     if (gameState?.currentClue?.state === "player_answering") {
@@ -222,27 +247,30 @@ export default function HostRemotePage() {
     gameState.finalJeopardy.state !== "not_started"
   ) {
     return (
-      <FinalJeopardy
-        state={gameState.finalJeopardy.state}
-        category={gameState.finalJeopardy.category}
-        clueText={gameState.finalJeopardy.clueText}
-        correctResponse={correctResponse || undefined}
-        isHost={true}
-        players={gameState.players}
-        submissions={gameState.finalJeopardy.submissions}
-        onAdvance={handleAdvanceFinal}
-        onJudge={handleJudgeFinal}
-        onRevealAdvance={handleRevealAdvance}
-        onNewRound={handleNewRoundFromWinner}
-        lastFinalResult={lastFinalResult}
-        countdown={countdownType === "final_answer" ? buzzCountdown : null}
-        countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
-        revealOrder={gameState.finalJeopardy.revealOrder}
-        currentRevealIndex={gameState.finalJeopardy.currentRevealIndex}
-        currentRevealStep={gameState.finalJeopardy.currentRevealStep}
-        judgments={gameState.finalJeopardy.judgments}
-        preRevealScores={gameState.finalJeopardy.preRevealScores}
-      />
+      <div className="relative">
+        <FinalJeopardy
+          state={gameState.finalJeopardy.state}
+          category={gameState.finalJeopardy.category}
+          clueText={gameState.finalJeopardy.clueText}
+          correctResponse={correctResponse || undefined}
+          isHost={true}
+          players={gameState.players}
+          submissions={gameState.finalJeopardy.submissions}
+          onAdvance={handleAdvanceFinal}
+          onJudge={handleJudgeFinal}
+          onRevealAdvance={handleRevealAdvance}
+          onNewRound={handleNewRoundFromWinner}
+          lastFinalResult={lastFinalResult}
+          countdown={countdownType === "final_answer" ? buzzCountdown : null}
+          countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
+          revealOrder={gameState.finalJeopardy.revealOrder}
+          currentRevealIndex={gameState.finalJeopardy.currentRevealIndex}
+          currentRevealStep={gameState.finalJeopardy.currentRevealStep}
+          judgments={gameState.finalJeopardy.judgments}
+          preRevealScores={gameState.finalJeopardy.preRevealScores}
+        />
+        <BurstConfetti bursts={confettiBursts} />
+      </div>
     );
   }
 
@@ -250,7 +278,8 @@ export default function HostRemotePage() {
   if (gameState.status === "finished") {
     const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center p-6 overflow-y-auto">
+      <div className="min-h-screen bg-white flex flex-col items-center p-6 overflow-y-auto relative">
+        <BurstConfetti bursts={confettiBursts} />
         {/* Final Scores */}
         <h2 className="text-3xl font-bold text-gradient-accent mb-6 mt-4">Final Scores</h2>
         <div className="w-full max-w-md space-y-2 mb-8">

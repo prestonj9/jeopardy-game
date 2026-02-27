@@ -169,6 +169,10 @@ export default function PlayerGamePage() {
     [socket]
   );
 
+  const handleTapConfetti = useCallback(() => {
+    socket?.emit("player:confetti");
+  }, [socket]);
+
   // Error state
   if (joinError) {
     return (
@@ -266,6 +270,7 @@ export default function PlayerGamePage() {
         players={gameState.players}
         myPlayerId={playerId}
         submissions={{}}
+        onTapConfetti={handleTapConfetti}
         revealOrder={[]}
         currentRevealIndex={-1}
         currentRevealStep="focus"

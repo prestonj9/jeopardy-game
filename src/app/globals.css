@@ -105,13 +105,33 @@ html, body {
 }
 .animate-podium-rise { animation: podium-rise 0.7s ease-out forwards; }
 
-/* Confetti falling */
+/* Confetti falling with horizontal drift */
 @keyframes confetti-fall {
-  0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
-  75% { opacity: 1; }
-  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  0% { transform: translateY(-100vh) translateX(0) rotate(0deg); opacity: 1; }
+  25% { transform: translateY(-25vh) translateX(var(--drift, 20px)) rotate(180deg); opacity: 1; }
+  50% { transform: translateY(25vh) translateX(calc(var(--drift, 20px) * -0.5)) rotate(360deg); opacity: 1; }
+  75% { transform: translateY(60vh) translateX(var(--drift, 20px)) rotate(540deg); opacity: 0.8; }
+  100% { transform: translateY(100vh) translateX(0) rotate(720deg); opacity: 0; }
 }
 .animate-confetti { animation: confetti-fall 3s ease-in forwards; }
+
+/* Confetti burst particle — radiates outward from center */
+@keyframes confetti-burst {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translate(var(--bx, 80px), var(--by, -120px)) rotate(var(--br, 360deg)) scale(0.3); opacity: 0; }
+}
+.animate-confetti-burst { animation: confetti-burst 1.5s ease-out forwards; }
+
+/* Name float for confetti burst */
+@keyframes confetti-name-float {
+  0% { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.8); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.1); }
+  30% { opacity: 1; transform: translateX(-50%) translateY(-4px) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-40px) scale(0.9); }
+}
+.animate-confetti-name { animation: confetti-name-float 1.8s ease-out forwards; }
 
 /* Accent gradient text utility */
 .text-gradient-accent {

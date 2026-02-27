@@ -981,6 +981,25 @@ export function registerSocketHandlers(io: TypedServer): void {
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 
+    // ── Player: Confetti Tap ──────────────────────────────────────────
+    const confettiThrottleMap = new Map<string, number>();
+    socket.on("player:confetti", () => {
+      const result = findGameBySocketId(socket.id);
+      if (!result || result.isHost || result.isDisplay || !result.player) return;
+      const { game, player } = result;
+
+      // Only allow during winner/finished state
+      if (game.status !== "finished" && game.finalJeopardy.state !== "winner") return;
+
+      // Throttle: max 1 per 150ms per player
+      const now = Date.now();
+      const lastTime = confettiThrottleMap.get(player.id) ?? 0;
+      if (now - lastTime < 150) return;
+      confettiThrottleMap.set(player.id, now);
+
+      io.to(game.id).emit("game:confetti_burst", { playerName: player.name });
+    });
+
     // ── Disconnect ────────────────────────────────────────────────────
     socket.on("disconnect", () => {
       console.log(`Client disconnected: ${socket.id}`);
