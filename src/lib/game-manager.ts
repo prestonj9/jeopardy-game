@@ -6,7 +6,9 @@ import type {
   SerializableGameState,
   SerializablePlayer,
   ScoreMap,
+  GenerateBoardRequest,
 } from "./types.ts";
+import { generateBoard } from "./ai-generator.ts";
 
 const nanoid = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
 
@@ -19,6 +21,8 @@ declare global {
   var __jeopardy_games__: Map<string, Game> | undefined;
   // eslint-disable-next-line no-var
   var __jeopardy_cleanup__: ReturnType<typeof setInterval> | undefined;
+  // eslint-disable-next-line no-var
+  var __jeopardy_io__: import("socket.io").Server | undefined;
 }
 
 if (!globalThis.__jeopardy_games__) {
@@ -53,6 +57,8 @@ export function createGame(
     displaySocketIds: new Set(),
     status: "lobby",
     board,
+    boardStatus: "ready",
+    startRequested: false,
     players: new Map(),
     currentClue: null,
     buzzOrder: [],
@@ -77,6 +83,118 @@ export function createGame(
   };
   games.set(id, game);
   return game;
+}
+
+function createPlaceholderBoard(): Board {
+  return {
+    categories: Array.from({ length: 6 }, () => ({
+      name: "...",
+      clues: [200, 400, 600, 800, 1000].map((value) => ({
+        value,
+        clueText: "",
+        correctResponse: "",
+        isRevealed: false,
+        isDailyDouble: false,
+      })),
+    })),
+    dailyDoubleLocation: { categoryIndex: 0, clueIndex: 2 },
+  };
+}
+
+export function createGameWithBackground(
+  generationParams: GenerateBoardRequest
+): Game {
+  const id = nanoid();
+  const game: Game = {
+    id,
+    hostSocketId: "pending",
+    displaySocketIds: new Set(),
+    status: "lobby",
+    board: createPlaceholderBoard(),
+    boardStatus: "generating",
+    generationParams,
+    startRequested: false,
+    players: new Map(),
+    currentClue: null,
+    buzzOrder: [],
+    buzzDelayTimer: null,
+    buzzWindowTimer: null,
+    answerTimer: null,
+    finalJeopardy: {
+      category: "",
+      clueText: "",
+      correctResponse: "",
+      state: "not_started",
+      submissions: new Map(),
+      revealOrder: [],
+      currentRevealIndex: -1,
+      currentRevealStep: "focus",
+      judgments: new Map(),
+      preRevealScores: {},
+    },
+    finalAnswerTimer: null,
+    lastCorrectPlayerId: null,
+    createdAt: Date.now(),
+  };
+  games.set(id, game);
+
+  // Fire-and-forget background generation
+  startBackgroundGeneration(game);
+
+  return game;
+}
+
+export async function startBackgroundGeneration(game: Game): Promise<void> {
+  try {
+    console.log(`[bg-gen] Starting board generation for game ${game.id}`);
+    const result = await generateBoard(game.generationParams!);
+
+    game.board = result.board;
+    game.finalJeopardy = {
+      category: result.finalJeopardy.category,
+      clueText: result.finalJeopardy.clueText,
+      correctResponse: result.finalJeopardy.correctResponse,
+      state: "not_started",
+      submissions: new Map(),
+      revealOrder: [],
+      currentRevealIndex: -1,
+      currentRevealStep: "focus",
+      judgments: new Map(),
+      preRevealScores: {},
+    };
+    game.boardStatus = "ready";
+    delete game.boardError;
+
+    console.log(`[bg-gen] Board ready for game ${game.id}`);
+
+    // Broadcast to all clients in the game room
+    const io = globalThis.__jeopardy_io__;
+    if (io) {
+      io.to(game.id).emit("game:board_ready");
+      io.to(game.id).emit("game:state_sync", serializeGameState(game));
+
+      // If host already clicked Start, auto-start now
+      if (game.startRequested && game.players.size > 0) {
+        game.status = "active";
+        game.startRequested = false;
+        io.to(game.id).emit("game:started");
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+        console.log(`[bg-gen] Auto-starting game ${game.id} (start was queued)`);
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Board generation failed";
+    console.error(`[bg-gen] Failed for game ${game.id}:`, message);
+    game.boardStatus = "failed";
+    game.boardError = message;
+    game.startRequested = false;
+
+    const io = globalThis.__jeopardy_io__;
+    if (io) {
+      io.to(game.id).emit("game:board_failed", { error: message });
+      io.to(game.id).emit("game:state_sync", serializeGameState(game));
+    }
+  }
 }
 
 export function getGame(gameId: string): Game | undefined {
@@ -164,6 +282,9 @@ export function resetGameForNewRound(
   newFinalJeopardy: { category: string; clueText: string; correctResponse: string }
 ): void {
   game.board = newBoard;
+  game.boardStatus = "ready";
+  delete game.boardError;
+  game.startRequested = false;
   game.status = "active";
   game.currentClue = null;
   game.buzzOrder = [];
@@ -256,5 +377,7 @@ export function serializeGameState(game: Game): SerializableGameState {
     },
     lastCorrectPlayerId: game.lastCorrectPlayerId,
     scores: getScoreMap(game),
+    boardStatus: game.boardStatus,
+    boardError: game.boardError,
   };
 }

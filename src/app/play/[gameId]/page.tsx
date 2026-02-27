@@ -221,6 +221,7 @@ export default function PlayerGamePage() {
         gameId={gameId}
         players={gameState.players}
         isHost={false}
+        boardStatus={gameState.boardStatus}
       />
     );
   }

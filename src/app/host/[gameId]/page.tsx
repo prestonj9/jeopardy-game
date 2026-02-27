@@ -129,6 +129,7 @@ export default function DisplayPage() {
         <DisplayLobby
           gameId={gameId}
           players={gameState.players}
+          boardStatus={gameState.boardStatus}
         />
       </div>
     );

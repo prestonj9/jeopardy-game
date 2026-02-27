@@ -110,6 +110,10 @@ export interface Game {
   displaySocketIds: Set<string>; // passive viewer sockets (TV/projector)
   status: GameStatus;
   board: Board;
+  boardStatus: "generating" | "ready" | "failed";
+  boardError?: string;
+  generationParams?: GenerateBoardRequest;
+  startRequested: boolean; // true if host clicked Start before board was ready
   players: Map<string, Player>; // keyed by player.id
   currentClue: ActiveClue | null;
   buzzOrder: BuzzEntry[];
@@ -183,6 +187,8 @@ export interface SerializableGameState {
   };
   lastCorrectPlayerId: string | null;
   scores: ScoreMap;
+  boardStatus: "generating" | "ready" | "failed";
+  boardError?: string;
 }
 
 // ── AI Board Response (shared between generator & validator) ─────────────────
@@ -274,6 +280,8 @@ export interface ServerToClientEvents {
   "game:state_sync": (data: SerializableGameState) => void;
   "game:host_clue_answer": (data: { correctResponse: string }) => void;
   "game:new_round_loading": () => void;
+  "game:board_ready": () => void;
+  "game:board_failed": (data: { error: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -309,6 +317,7 @@ export interface ClientToServerEvents {
   "player:final_wager": (data: { amount: number }) => void;
   "player:final_answer": (data: { answer: string }) => void;
   "host:new_round": (data: { topic: string }) => void;
+  "host:retry_generation": () => void;
 }
 
 export interface InterServerEvents {

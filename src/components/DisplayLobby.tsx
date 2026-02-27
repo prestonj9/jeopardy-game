@@ -9,9 +9,10 @@ import ShareableLink from "./ShareableLink";
 interface DisplayLobbyProps {
   gameId: string;
   players: SerializablePlayer[];
+  boardStatus?: "generating" | "ready" | "failed";
 }
 
-export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
+export default function DisplayLobby({ gameId, players, boardStatus = "ready" }: DisplayLobbyProps) {
   const [showHostQR, setShowHostQR] = useState(false);
 
   const remoteUrl =
@@ -74,6 +75,19 @@ export default function DisplayLobby({ gameId, players }: DisplayLobbyProps) {
           )}
         </div>
       </div>
+
+      {/* Board generation status */}
+      {boardStatus === "generating" && (
+        <div className="flex items-center justify-center gap-3 mt-8 text-text-secondary">
+          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <span className="text-lg">Generating game board...</span>
+        </div>
+      )}
+      {boardStatus === "failed" && (
+        <div className="mt-8 text-danger text-lg text-center">
+          Board generation failed. Host can retry from the remote.
+        </div>
+      )}
 
       {/* Host Remote QR Modal */}
       {showHostQR && remoteUrl && (

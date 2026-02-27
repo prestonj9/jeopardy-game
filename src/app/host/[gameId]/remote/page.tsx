@@ -23,6 +23,7 @@ export default function HostRemotePage() {
   const [socketError, setSocketError] = useState<string | null>(null);
   const [newRoundTopic, setNewRoundTopic] = useState("");
   const [messageIndex, setMessageIndex] = useState(0);
+  const [startRequested, setStartRequested] = useState(false);
 
   // Join game room as host controller
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function HostRemotePage() {
 
   const handleStartGame = useCallback(() => {
     socket?.emit("host:start_game");
+    setStartRequested(true);
   }, [socket]);
 
   const handleJudge = useCallback(
@@ -109,6 +111,10 @@ export default function HostRemotePage() {
     socket?.emit("host:reveal_advance");
   }, [socket]);
 
+  const handleRetryGeneration = useCallback(() => {
+    socket?.emit("host:retry_generation");
+  }, [socket]);
+
   const handleNewRound = useCallback(() => {
     if (!socket || !newRoundTopic.trim()) return;
     socket.emit("host:new_round", { topic: newRoundTopic.trim() });
@@ -119,6 +125,7 @@ export default function HostRemotePage() {
     if (gameState?.status === "active" && !gameState.currentClue) {
       setCorrectResponse(null);
       setActiveClueText(null);
+      setStartRequested(false);
       setNewRoundTopic("");
     }
   }, [gameState?.status, gameState?.currentClue]);
@@ -188,6 +195,10 @@ export default function HostRemotePage() {
         players={gameState.players}
         isHost={true}
         onStartGame={handleStartGame}
+        onRetryGeneration={handleRetryGeneration}
+        boardStatus={gameState.boardStatus}
+        boardError={gameState.boardError}
+        startRequested={startRequested}
       />
     );
   }

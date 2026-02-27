@@ -26,6 +26,9 @@ app.prepare().then(() => {
     },
   });
 
+  // Store io globally so game-manager can broadcast when background generation completes
+  (globalThis as Record<string, unknown>).__jeopardy_io__ = io;
+
   registerSocketHandlers(io);
 
   httpServer

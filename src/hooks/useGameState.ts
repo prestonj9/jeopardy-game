@@ -434,6 +434,9 @@ export function useGameState(socket: TypedSocket | null) {
         dispatch({ type: "BUZZ_COUNTDOWN", secondsRemaining: data.secondsRemaining, countdownType: data.type, totalSeconds: data.totalSeconds }),
       "game:new_round_loading": () =>
         dispatch({ type: "NEW_ROUND_LOADING" }),
+      // Board generation events (state updates come via game:state_sync)
+      "game:board_ready": () => {},
+      "game:board_failed": () => {},
     };
 
     // Register all handlers

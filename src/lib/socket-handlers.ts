@@ -14,6 +14,7 @@ import {
   getScoreMap,
   serializeGameState,
   resetGameForNewRound,
+  startBackgroundGeneration,
 } from "./game-manager.ts";
 import { generateBoard } from "./ai-generator.ts";
 
@@ -292,9 +293,40 @@ export function registerSocketHandlers(io: TypedServer): void {
         return;
       }
 
-      game.status = "active";
-      io.to(game.id).emit("game:started");
+      if (game.boardStatus === "ready") {
+        // Board ready — start immediately
+        game.status = "active";
+        io.to(game.id).emit("game:started");
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+      } else if (game.boardStatus === "generating") {
+        // Board still generating — queue the start (auto-starts when ready)
+        game.startRequested = true;
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+      } else if (game.boardStatus === "failed") {
+        socket.emit("game:error", {
+          message: game.boardError || "Board generation failed. Tap retry to try again.",
+        });
+      }
+    });
+
+    // ── Host: Retry Board Generation ───────────────────────────────────
+    socket.on("host:retry_generation", () => {
+      const result = findGameBySocketId(socket.id);
+      if (!result || !result.isHost) return;
+      const { game } = result;
+
+      if (game.boardStatus !== "failed" || !game.generationParams) {
+        socket.emit("game:error", { message: "Cannot retry generation" });
+        return;
+      }
+
+      game.boardStatus = "generating";
+      delete game.boardError;
+      game.startRequested = false;
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
+
+      // Re-trigger background generation
+      startBackgroundGeneration(game);
     });
 
     // ── Host: Select Clue ─────────────────────────────────────────────

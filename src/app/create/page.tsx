@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LOADING_MESSAGES } from "@/lib/constants";
 import InteractiveHero from "@/components/InteractiveHero";
 
 function isValidUrl(urlString: string): boolean {
@@ -73,30 +72,20 @@ export default function CreatePage() {
     setLoading(true);
     setError(null);
     try {
-      const body =
+      const generationParams =
         mode === "topic"
           ? { mode: "topic" as const, topic }
           : { mode: "upload" as const, content: (mode === "link" ? linkContent : uploadedContent) || "" };
 
-      const boardRes = await fetch("/api/generate-board", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const boardData = await boardRes.json();
-      if (!boardRes.ok) throw new Error(boardData.error || "Generation failed");
-
       const gameRes = await fetch("/api/game", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          board: boardData.board,
-          finalJeopardy: boardData.finalJeopardy,
-        }),
+        body: JSON.stringify({ generationParams }),
       });
       const gameData = await gameRes.json();
       if (!gameRes.ok) throw new Error(gameData.error || "Game creation failed");
 
+      // Redirect to lobby immediately — board generates in the background
       router.push("/host/" + gameData.gameId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -111,34 +100,6 @@ export default function CreatePage() {
       : mode === "upload"
       ? uploadedContent !== null
       : linkContent !== null);
-
-  // Rotate loading messages
-  const [messageIndex, setMessageIndex] = useState(0);
-  useEffect(() => {
-    if (!loading) return;
-    // Pick a random starting point
-    setMessageIndex(Math.floor(Math.random() * LOADING_MESSAGES.length));
-    const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [loading]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
-        <InteractiveHero />
-        <div className="text-center max-w-md relative z-10">
-          <p
-            key={messageIndex}
-            className="text-text-secondary text-xl animate-[fadeIn_0.5s_ease-in] min-h-[3.5rem]"
-          >
-            {LOADING_MESSAGES[messageIndex]}
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
@@ -304,7 +265,7 @@ export default function CreatePage() {
           disabled={!canGenerate}
           className="w-full py-4 rounded-full font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-text-primary text-white hover:opacity-90"
         >
-          Generate Game
+          {loading ? "Creating Game..." : "Generate Game"}
         </button>
       </div>
     </div>

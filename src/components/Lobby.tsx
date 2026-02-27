@@ -8,6 +8,10 @@ interface LobbyProps {
   players: SerializablePlayer[];
   isHost: boolean;
   onStartGame?: () => void;
+  onRetryGeneration?: () => void;
+  boardStatus?: "generating" | "ready" | "failed";
+  boardError?: string;
+  startRequested?: boolean;
 }
 
 export default function Lobby({
@@ -15,6 +19,10 @@ export default function Lobby({
   players,
   isHost,
   onStartGame,
+  onRetryGeneration,
+  boardStatus = "ready",
+  boardError,
+  startRequested,
 }: LobbyProps) {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
@@ -61,14 +69,52 @@ export default function Lobby({
           </div>
         </div>
 
+        {/* Board generation status */}
+        {boardStatus === "generating" && (
+          <div className="flex items-center justify-center gap-2 text-text-secondary mb-4">
+            <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Generating game board...</span>
+          </div>
+        )}
+        {boardStatus === "ready" && (
+          <div className="flex items-center justify-center gap-2 text-success mb-4 animate-fade-in">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <span className="text-sm font-medium">Board ready</span>
+          </div>
+        )}
+        {boardStatus === "failed" && (
+          <div className="mb-4">
+            <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm mb-2">
+              {boardError || "Board generation failed"}
+            </div>
+            {isHost && (
+              <button
+                onClick={onRetryGeneration}
+                className="w-full py-3 rounded-full font-bold text-base transition-all bg-danger text-white hover:opacity-90 active:scale-[0.98]"
+              >
+                Retry Generation
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Host Controls */}
-        {isHost && (
+        {isHost && boardStatus !== "failed" && (
           <button
             onClick={onStartGame}
             disabled={players.length === 0}
             className="w-full py-4 rounded-full font-bold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-text-primary text-white hover:opacity-90 active:scale-[0.98]"
           >
-            Start Game
+            {startRequested ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Waiting for board...
+              </span>
+            ) : (
+              "Start Game"
+            )}
           </button>
         )}
 
