@@ -244,6 +244,11 @@ export default function PlayerGamePage() {
         lastFinalResult={lastFinalResult}
         countdown={countdownType === "final_answer" ? buzzCountdown : null}
         countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
+        revealOrder={gameState.finalJeopardy.revealOrder}
+        currentRevealIndex={gameState.finalJeopardy.currentRevealIndex}
+        currentRevealStep={gameState.finalJeopardy.currentRevealStep}
+        judgments={gameState.finalJeopardy.judgments}
+        preRevealScores={gameState.finalJeopardy.preRevealScores}
       />
     );
   }
@@ -252,13 +257,18 @@ export default function PlayerGamePage() {
   if (gameState.status === "finished") {
     return (
       <FinalJeopardy
-        state="results"
+        state="winner"
         category=""
         clueText=""
         isHost={false}
         players={gameState.players}
         myPlayerId={playerId}
         submissions={{}}
+        revealOrder={[]}
+        currentRevealIndex={-1}
+        currentRevealStep="focus"
+        judgments={{}}
+        preRevealScores={{}}
       />
     );
   }

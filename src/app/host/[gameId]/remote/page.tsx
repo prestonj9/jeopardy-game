@@ -105,6 +105,10 @@ export default function HostRemotePage() {
     [socket]
   );
 
+  const handleRevealAdvance = useCallback(() => {
+    socket?.emit("host:reveal_advance");
+  }, [socket]);
+
   const handleNewRound = useCallback(() => {
     if (!socket || !newRoundTopic.trim()) return;
     socket.emit("host:new_round", { topic: newRoundTopic.trim() });
@@ -204,9 +208,15 @@ export default function HostRemotePage() {
         submissions={gameState.finalJeopardy.submissions}
         onAdvance={handleAdvanceFinal}
         onJudge={handleJudgeFinal}
+        onRevealAdvance={handleRevealAdvance}
         lastFinalResult={lastFinalResult}
         countdown={countdownType === "final_answer" ? buzzCountdown : null}
         countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
+        revealOrder={gameState.finalJeopardy.revealOrder}
+        currentRevealIndex={gameState.finalJeopardy.currentRevealIndex}
+        currentRevealStep={gameState.finalJeopardy.currentRevealStep}
+        judgments={gameState.finalJeopardy.judgments}
+        preRevealScores={gameState.finalJeopardy.preRevealScores}
       />
     );
   }

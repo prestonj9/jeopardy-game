@@ -183,7 +183,7 @@ function startAnswerCountdown(io: TypedServer, game: Game): void {
   game.answerTimer = setTimeout(tick, 1000);
 }
 
-/** Final Jeopardy answer timer. On expiry: auto-advance to judging. */
+/** Final Jeopardy answer timer. On expiry: auto-advance to revealing. */
 function startFinalAnswerCountdown(io: TypedServer, game: Game): void {
   let countdown = FINAL_ANSWER_SECONDS;
 
@@ -203,12 +203,12 @@ function startFinalAnswerCountdown(io: TypedServer, game: Game): void {
     if (countdown > 0) {
       game.finalAnswerTimer = setTimeout(tick, 1000);
     } else {
-      // Time's up — auto-advance to judging
+      // Time's up — auto-advance to revealing
       game.finalAnswerTimer = null;
       if (game.finalJeopardy.state === "answering") {
-        game.finalJeopardy.state = "judging";
+        enterRevealingState(game);
         io.to(game.id).emit("game:final_advanced", {
-          newState: "judging",
+          newState: "revealing",
         });
         io.to(game.id).emit("game:state_sync", serializeGameState(game));
       }
@@ -216,6 +216,28 @@ function startFinalAnswerCountdown(io: TypedServer, game: Game): void {
   };
 
   game.finalAnswerTimer = setTimeout(tick, 1000);
+}
+
+/** Transition to revealing state: snapshot scores, compute reveal order */
+function enterRevealingState(game: Game): void {
+  const fj = game.finalJeopardy;
+  fj.state = "revealing";
+  fj.currentRevealIndex = -1; // pre-reveal pause
+  fj.currentRevealStep = "focus";
+  fj.judgments = new Map();
+
+  // Snapshot current scores before any FJ scoring
+  const preScores: Record<string, number> = {};
+  for (const [id, player] of game.players) {
+    preScores[id] = player.score;
+  }
+  fj.preRevealScores = preScores;
+
+  // Sort players by lowest score first for reveal order
+  const sorted = [...game.players.values()]
+    .sort((a, b) => a.score - b.score)
+    .map((p) => p.id);
+  fj.revealOrder = sorted;
 }
 
 export function registerSocketHandlers(io: TypedServer): void {
@@ -495,27 +517,35 @@ export function registerSocketHandlers(io: TypedServer): void {
       const { game } = result;
 
       const fj = game.finalJeopardy;
+
+      // Special case: winner → finished
+      if (fj.state === "winner") {
+        game.status = "finished";
+        io.to(game.id).emit("game:finished", {
+          finalScores: getScoreMap(game),
+        });
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+        return;
+      }
+
       const transitions: Record<string, string> = {
         show_category: "wagering",
         wagering: "answering",
-        answering: "judging",
-        judging: "results",
+        answering: "revealing",
       };
 
       const nextState = transitions[fj.state];
       if (!nextState) return;
 
-      fj.state = nextState as FinalState;
-
       if (nextState === "answering") {
+        fj.state = "answering" as FinalState;
         io.to(game.id).emit("game:final_clue", {
           clueText: fj.clueText,
         });
         startFinalAnswerCountdown(io, game);
-      }
-
-      if (nextState === "judging") {
+      } else if (nextState === "revealing") {
         clearFinalAnswerTimer(game);
+        enterRevealingState(game);
       }
 
       io.to(game.id).emit("game:final_advanced", {
@@ -524,24 +554,25 @@ export function registerSocketHandlers(io: TypedServer): void {
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 
-    // ── Host: Judge Final Jeopardy ────────────────────────────────────
+    // ── Host: Judge Final Jeopardy (during reveal sequence) ──────────
     socket.on("host:judge_final", (data) => {
       const result = findGameBySocketId(socket.id);
       if (!result || !result.isHost) return;
       const { game } = result;
 
+      const fj = game.finalJeopardy;
+      if (fj.state !== "revealing" || fj.currentRevealStep !== "answer") return;
+
       const player = game.players.get(data.playerId);
       if (!player) return;
 
-      const submission = game.finalJeopardy.submissions.get(data.playerId);
+      // Store judgment but do NOT update score yet (delayed until "score" step)
+      fj.judgments.set(data.playerId, data.correct);
+      fj.currentRevealStep = "judged";
+
+      const submission = fj.submissions.get(data.playerId);
       const wager = submission?.wager ?? 0;
       const answer = submission?.answer ?? "(no answer)";
-
-      if (data.correct) {
-        player.score += wager;
-      } else {
-        player.score -= wager;
-      }
 
       io.to(game.id).emit("game:final_judge_result", {
         playerId: data.playerId,
@@ -549,8 +580,72 @@ export function registerSocketHandlers(io: TypedServer): void {
         correct: data.correct,
         wager,
         answer,
-        finalScores: getScoreMap(game),
+        finalScores: getScoreMap(game), // scores NOT updated yet
       });
+      io.to(game.id).emit("game:state_sync", serializeGameState(game));
+    });
+
+    // ── Host: Advance Reveal Step ──────────────────────────────────
+    socket.on("host:reveal_advance", () => {
+      const result = findGameBySocketId(socket.id);
+      if (!result || !result.isHost) return;
+      const { game } = result;
+
+      const fj = game.finalJeopardy;
+      if (fj.state !== "revealing") return;
+
+      // Pre-reveal → first player
+      if (fj.currentRevealIndex === -1) {
+        fj.currentRevealIndex = 0;
+        fj.currentRevealStep = "focus";
+        io.to(game.id).emit("game:state_sync", serializeGameState(game));
+        return;
+      }
+
+      const currentPlayerId = fj.revealOrder[fj.currentRevealIndex];
+      const step = fj.currentRevealStep;
+
+      if (step === "focus") {
+        // Focus → Answer (reveal the player's response)
+        fj.currentRevealStep = "answer";
+      } else if (step === "judged") {
+        // Judged → Wager
+        fj.currentRevealStep = "wager";
+      } else if (step === "wager") {
+        // Wager → Score (NOW apply score change)
+        fj.currentRevealStep = "score";
+
+        const player = game.players.get(currentPlayerId);
+        const submission = fj.submissions.get(currentPlayerId);
+        const correct = fj.judgments.get(currentPlayerId);
+        if (player && submission) {
+          const wager = submission.wager;
+          if (correct) {
+            player.score += wager;
+          } else {
+            player.score -= wager;
+          }
+          io.to(game.id).emit("game:reveal_score_update", {
+            playerId: currentPlayerId,
+            newScore: player.score,
+            finalScores: getScoreMap(game),
+          });
+        }
+      } else if (step === "score") {
+        // Score → Next Player or Winner
+        const nextIndex = fj.currentRevealIndex + 1;
+        if (nextIndex < fj.revealOrder.length) {
+          fj.currentRevealIndex = nextIndex;
+          fj.currentRevealStep = "focus";
+        } else {
+          // All players revealed → winner celebration
+          fj.state = "winner";
+          io.to(game.id).emit("game:final_advanced", {
+            newState: "winner",
+          });
+        }
+      }
+
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     });
 

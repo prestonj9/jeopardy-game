@@ -27,10 +27,19 @@ export const FinalState = {
   SHOW_CATEGORY: "show_category",
   WAGERING: "wagering",
   ANSWERING: "answering",
-  JUDGING: "judging",
-  RESULTS: "results",
+  REVEALING: "revealing",
+  WINNER: "winner",
 } as const;
 export type FinalState = (typeof FinalState)[keyof typeof FinalState];
+
+export const RevealStep = {
+  FOCUS: "focus",
+  ANSWER: "answer",
+  JUDGED: "judged",
+  WAGER: "wager",
+  SCORE: "score",
+} as const;
+export type RevealStep = (typeof RevealStep)[keyof typeof RevealStep];
 
 // ── Core Data Models ────────────────────────────────────────────────────────
 
@@ -83,6 +92,12 @@ export interface FinalJeopardyState {
   correctResponse: string;
   state: FinalState;
   submissions: Map<string, { wager: number; answer: string }>;
+  // Reveal sequence state
+  revealOrder: string[]; // player IDs sorted by lowest score first
+  currentRevealIndex: number; // -1 = pre-reveal, 0..N-1 = active player
+  currentRevealStep: RevealStep;
+  judgments: Map<string, boolean>; // playerId → correct
+  preRevealScores: Record<string, number>; // snapshot of scores entering reveal
 }
 
 // ── Countdown Type ────────────────────────────────────────────────────────────
@@ -160,6 +175,11 @@ export interface SerializableGameState {
     clueText: string;
     state: FinalState;
     submissions: Record<string, { wager: number; answer: string }>;
+    revealOrder: string[];
+    currentRevealIndex: number;
+    currentRevealStep: RevealStep;
+    judgments: Record<string, boolean>;
+    preRevealScores: Record<string, number>;
   };
   lastCorrectPlayerId: string | null;
   scores: ScoreMap;
@@ -243,6 +263,11 @@ export interface ServerToClientEvents {
     answer: string;
     finalScores: ScoreMap;
   }) => void;
+  "game:reveal_score_update": (data: {
+    playerId: string;
+    newScore: number;
+    finalScores: ScoreMap;
+  }) => void;
   "game:finished": (data: { finalScores: ScoreMap }) => void;
   "game:buzz_countdown": (data: { secondsRemaining: number; type: CountdownType; totalSeconds: number }) => void;
   "game:error": (data: { message: string }) => void;
@@ -266,6 +291,7 @@ export interface ClientToServerEvents {
   "host:reveal_answer": () => void;
   "host:start_final": () => void;
   "host:advance_final": () => void;
+  "host:reveal_advance": () => void;
   "host:judge_final": (data: {
     playerId: string;
     correct: boolean;

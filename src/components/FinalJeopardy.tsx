@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { FinalState, SerializablePlayer } from "@/lib/types";
+import { useState, useEffect, useRef } from "react";
+import type { FinalState, RevealStep, SerializablePlayer } from "@/lib/types";
 import WagerInput from "./WagerInput";
 
 interface FinalJeopardyProps {
@@ -17,6 +17,7 @@ interface FinalJeopardyProps {
   onJudge?: (playerId: string, correct: boolean) => void;
   onSubmitWager?: (amount: number) => void;
   onSubmitAnswer?: (answer: string) => void;
+  onRevealAdvance?: () => void;
   lastFinalResult?: {
     playerId: string;
     playerName: string;
@@ -26,6 +27,68 @@ interface FinalJeopardyProps {
   } | null;
   countdown?: number | null;
   countdownTotal?: number | null;
+  // Reveal state
+  revealOrder: string[];
+  currentRevealIndex: number;
+  currentRevealStep: RevealStep;
+  judgments: Record<string, boolean>;
+  preRevealScores: Record<string, number>;
+}
+
+// Animated score counter component
+function AnimatedScore({ from, to, active }: { from: number; to: number; active: boolean }) {
+  const [display, setDisplay] = useState(from);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!active) {
+      setDisplay(from);
+      return;
+    }
+    const duration = 1500;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [from, to, active]);
+
+  return (
+    <span className={`font-bold text-xl tabular-nums ${display < 0 ? "text-danger" : "text-accent"}`}>
+      ${display.toLocaleString()}
+    </span>
+  );
+}
+
+// Confetti component
+function Confetti() {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden">
+      {Array.from({ length: 50 }).map((_, i) => (
+        <div
+          key={i}
+          className="absolute animate-confetti"
+          style={{
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 2}s`,
+            animationDuration: `${2 + Math.random() * 3}s`,
+            backgroundColor: ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899"][i % 6],
+            width: `${6 + Math.random() * 8}px`,
+            height: `${6 + Math.random() * 8}px`,
+            borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function FinalJeopardy({
@@ -41,22 +104,67 @@ export default function FinalJeopardy({
   onJudge,
   onSubmitWager,
   onSubmitAnswer,
-  lastFinalResult,
+  onRevealAdvance,
   countdown,
   countdownTotal,
+  revealOrder,
+  currentRevealIndex,
+  currentRevealStep,
+  judgments,
+  preRevealScores,
 }: FinalJeopardyProps) {
   const [answer, setAnswer] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState(false);
   const [submittedWager, setSubmittedWager] = useState(false);
 
   const myPlayer = players.find((p) => p.id === myPlayerId);
-  const sortedPlayers = [...players].sort((a, b) => a.score - b.score); // lowest first for reveal
 
-  // Track which players have been judged
-  const [judgedPlayers, setJudgedPlayers] = useState<Set<string>>(new Set());
+  // Helper: get player by ID
+  const getPlayer = (id: string) => players.find((p) => p.id === id);
+
+  // Current reveal player
+  const currentRevealPlayerId = currentRevealIndex >= 0 ? revealOrder[currentRevealIndex] : null;
+  const currentRevealPlayer = currentRevealPlayerId ? getPlayer(currentRevealPlayerId) : null;
+
+  // Is a specific player the active reveal target?
+  const isActiveReveal = (playerId: string) => {
+    return currentRevealPlayerId === playerId && currentRevealIndex >= 0;
+  };
+
+  // Get the reveal step for a specific player
+  const getPlayerRevealStep = (playerId: string): RevealStep | "unrevealed" | "done" => {
+    const playerIdx = revealOrder.indexOf(playerId);
+    if (playerIdx < 0) return "unrevealed";
+    if (playerIdx < currentRevealIndex) return "done";
+    if (playerIdx === currentRevealIndex) return currentRevealStep;
+    return "unrevealed";
+  };
+
+  // Has a player's answer step been reached or passed?
+  const isAnswerShown = (playerId: string) => {
+    const step = getPlayerRevealStep(playerId);
+    return step === "answer" || step === "judged" || step === "wager" || step === "score" || step === "done";
+  };
+
+  // Has a player been judged?
+  const isJudged = (playerId: string) => {
+    return judgments[playerId] !== undefined;
+  };
+
+  // Has wager been shown?
+  const isWagerShown = (playerId: string) => {
+    const step = getPlayerRevealStep(playerId);
+    return step === "wager" || step === "score" || step === "done";
+  };
+
+  // Has score been updated?
+  const isScoreRevealed = (playerId: string) => {
+    const step = getPlayerRevealStep(playerId);
+    return step === "score" || step === "done";
+  };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-6">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-6 overflow-y-auto">
       {/* Show Category */}
       {state === "show_category" && (
         <div className="text-center">
@@ -187,7 +295,7 @@ export default function FinalJeopardy({
                 onClick={onAdvance}
                 className="px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
               >
-                Begin Judging
+                Begin Reveal
               </button>
             </div>
           ) : !submittedAnswer ? (
@@ -218,12 +326,131 @@ export default function FinalJeopardy({
         </div>
       )}
 
-      {/* Judging */}
-      {state === "judging" && isHost && (
-        <div className="text-center w-full max-w-lg">
-          <h2 className="text-3xl font-bold text-gradient-accent mb-6">
-            Judge Final Answers
+      {/* ═══════════════════════════════════════════════════════════════════
+          REVEALING — Display & Player Card Layout
+          ═══════════════════════════════════════════════════════════════════ */}
+      {state === "revealing" && !isHost && (
+        <div className="w-full max-w-4xl">
+          <h2 className="text-2xl md:text-3xl font-bold text-gradient-accent text-center mb-8">
+            Final Jeopardy
           </h2>
+
+          {/* Pre-reveal: waiting for host */}
+          {currentRevealIndex === -1 && (
+            <p className="text-text-secondary text-center text-lg animate-pulse">
+              Waiting for the host to begin the reveal...
+            </p>
+          )}
+
+          {/* Card grid */}
+          {currentRevealIndex >= 0 && (
+            <div className="flex flex-wrap justify-center gap-4">
+              {revealOrder.map((playerId) => {
+                const player = getPlayer(playerId);
+                if (!player) return null;
+                const isActive = isActiveReveal(playerId);
+                const step = getPlayerRevealStep(playerId);
+                const isMe = playerId === myPlayerId;
+                const sub = submissions[playerId];
+                const judged = judgments[playerId];
+                const preScore = preRevealScores[playerId] ?? 0;
+                const scoreRevealed = isScoreRevealed(playerId);
+
+                return (
+                  <div
+                    key={playerId}
+                    className={`
+                      relative rounded-2xl border-2 p-5 transition-all duration-500 w-full sm:w-64
+                      ${isActive
+                        ? "border-accent bg-accent/5 scale-105 shadow-lg animate-card-focus"
+                        : step === "done"
+                          ? "border-border bg-surface"
+                          : "border-border/50 bg-surface/50 opacity-60"
+                      }
+                    `}
+                  >
+                    {/* Player name */}
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-text-primary font-bold text-lg">
+                        {player.name}
+                      </span>
+                      {isMe && isActive && (
+                        <span className="text-xs bg-accent text-white px-2 py-0.5 rounded-full animate-pulse">
+                          You&apos;re up!
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Score */}
+                    <div className="mb-3">
+                      {scoreRevealed ? (
+                        <AnimatedScore
+                          from={preScore}
+                          to={player.score}
+                          active={step === "score"}
+                        />
+                      ) : (
+                        <span className="font-bold text-xl tabular-nums text-accent">
+                          ${preScore.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Answer — show for "me" always when revealed, for others show outcome only */}
+                    {isAnswerShown(playerId) && (
+                      <div className="animate-fade-in">
+                        {(isMe || isHost) ? (
+                          <p className="text-text-primary text-sm mb-2 italic">
+                            &quot;{sub?.answer || "(no answer)"}&quot;
+                          </p>
+                        ) : (
+                          <p className="text-text-secondary text-sm mb-2 italic">
+                            Answer revealed
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Judgment indicator */}
+                    {isJudged(playerId) && (
+                      <div className={`inline-flex items-center gap-1 text-sm font-bold mb-2 animate-fade-in ${
+                        judged ? "text-success" : "text-danger"
+                      }`}>
+                        <span>{judged ? "\u2713 Correct" : "\u2717 Incorrect"}</span>
+                      </div>
+                    )}
+
+                    {/* Wager */}
+                    {isWagerShown(playerId) && (
+                      <p className="text-text-secondary text-sm animate-fade-in">
+                        Wagered: ${sub?.wager?.toLocaleString() ?? 0}
+                      </p>
+                    )}
+
+                    {/* Flash overlay for judgment */}
+                    {isActive && step === "judged" && (
+                      <div className={`absolute inset-0 rounded-2xl pointer-events-none ${
+                        judged ? "animate-flash-green" : "animate-flash-red"
+                      }`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          REVEALING — Host Remote Controls
+          ═══════════════════════════════════════════════════════════════════ */}
+      {state === "revealing" && isHost && (
+        <div className="w-full max-w-md text-center">
+          <h2 className="text-2xl font-bold text-gradient-accent mb-4">
+            Reveal Answers
+          </h2>
+
+          {/* Correct response always visible for host */}
           {correctResponse && (
             <div className="mb-6 p-4 border-2 border-accent/30 rounded-xl bg-accent/5">
               <p className="text-accent/70 text-xs uppercase tracking-wider mb-1">
@@ -234,130 +461,184 @@ export default function FinalJeopardy({
               </p>
             </div>
           )}
-          <div className="space-y-4">
-            {sortedPlayers.map((player) => {
-              const sub = submissions[player.id];
-              const isJudged = judgedPlayers.has(player.id);
-              return (
-                <div
-                  key={player.id}
-                  className={`p-4 rounded-xl border border-border ${
-                    isJudged ? "bg-surface opacity-50" : "bg-surface"
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-text-primary font-bold text-lg">
-                      {player.name}
-                    </span>
-                    <span className="text-accent">
-                      Wagered: ${sub?.wager ?? 0}
-                    </span>
-                  </div>
-                  <p className="text-text-primary text-lg mb-3">
-                    &quot;{sub?.answer || "(no answer)"}&quot;
-                  </p>
-                  {!isJudged && (
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => {
-                          onJudge?.(player.id, true);
-                          setJudgedPlayers((prev) => { const next = new Set(Array.from(prev)); next.add(player.id); return next; });
-                        }}
-                        className="flex-1 py-3 bg-success text-white font-bold rounded-full hover:opacity-90"
-                      >
-                        CORRECT
-                      </button>
-                      <button
-                        onClick={() => {
-                          onJudge?.(player.id, false);
-                          setJudgedPlayers((prev) => { const next = new Set(Array.from(prev)); next.add(player.id); return next; });
-                        }}
-                        className="flex-1 py-3 bg-danger text-white font-bold rounded-full hover:opacity-90"
-                      >
-                        INCORRECT
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {judgedPlayers.size === players.length && (
+
+          {/* Pre-reveal */}
+          {currentRevealIndex === -1 && (
             <button
-              onClick={onAdvance}
-              className="mt-6 px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
+              onClick={onRevealAdvance}
+              className="w-full py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90 animate-pulse"
             >
-              Show Final Results
+              Begin Reveal
             </button>
           )}
-        </div>
-      )}
 
-      {/* Results */}
-      {state === "results" && (
-        <div className="text-center w-full max-w-lg">
-          <h2 className="text-4xl font-bold text-gradient-accent mb-8">
-            Final Scores
-          </h2>
-          <div className="space-y-3">
-            {[...players]
-              .sort((a, b) => b.score - a.score)
-              .map((player, i) => (
-                <div
-                  key={player.id}
-                  className={`flex justify-between items-center px-6 py-4 rounded-full ${
-                    i === 0
-                      ? "bg-accent/10 ring-2 ring-accent"
-                      : "bg-surface border border-border"
-                  }`}
+          {/* Active player info & controls */}
+          {currentRevealIndex >= 0 && currentRevealPlayer && (
+            <div>
+              <div className="mb-4 p-4 bg-surface rounded-xl border border-border">
+                <p className="text-text-secondary text-sm mb-1">Now revealing:</p>
+                <p className="text-text-primary font-bold text-2xl">
+                  {currentRevealPlayer.name}
+                </p>
+                <p className="text-accent text-sm">
+                  Current score: ${(preRevealScores[currentRevealPlayerId!] ?? 0).toLocaleString()}
+                </p>
+              </div>
+
+              {/* Step-specific controls */}
+              {currentRevealStep === "focus" && (
+                <button
+                  onClick={onRevealAdvance}
+                  className="w-full py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-accent font-bold text-lg">
-                      #{i + 1}
-                    </span>
-                    <span className="text-text-primary font-bold text-lg">
-                      {player.name}
-                    </span>
+                  Reveal Answer
+                </button>
+              )}
+
+              {currentRevealStep === "answer" && (
+                <div>
+                  <div className="mb-4 p-3 bg-surface rounded-xl border border-border">
+                    <p className="text-text-secondary text-xs mb-1">Their answer:</p>
+                    <p className="text-text-primary text-lg font-medium italic">
+                      &quot;{submissions[currentRevealPlayerId!]?.answer || "(no answer)"}&quot;
+                    </p>
                   </div>
-                  <span
-                    className={`font-bold text-xl ${
-                      player.score < 0 ? "text-danger" : "text-accent"
-                    }`}
-                  >
-                    ${player.score.toLocaleString()}
-                  </span>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => onJudge?.(currentRevealPlayerId!, true)}
+                      className="flex-1 py-4 bg-success text-white font-bold text-xl rounded-full hover:opacity-90"
+                    >
+                      Correct
+                    </button>
+                    <button
+                      onClick={() => onJudge?.(currentRevealPlayerId!, false)}
+                      className="flex-1 py-4 bg-danger text-white font-bold text-xl rounded-full hover:opacity-90"
+                    >
+                      Incorrect
+                    </button>
+                  </div>
                 </div>
-              ))}
-          </div>
-        </div>
-      )}
+              )}
 
-      {/* Non-host judging/results view */}
-      {state === "judging" && !isHost && (
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gradient-accent mb-4">
-            Judging Answers...
-          </h2>
-          {lastFinalResult && (
-            <div className="p-4 bg-surface rounded-xl border border-border mb-4">
-              <p className="text-text-primary font-bold">
-                {lastFinalResult.playerName}:{" "}
-                <span
-                  className={
-                    lastFinalResult.correct
-                      ? "text-success"
-                      : "text-danger"
-                  }
-                >
-                  {lastFinalResult.correct ? "Correct!" : "Incorrect"}
-                </span>
-              </p>
-              <p className="text-text-secondary text-sm">
-                Wagered: ${lastFinalResult.wager}
-              </p>
+              {currentRevealStep === "judged" && (
+                <div>
+                  <div className={`mb-4 p-3 rounded-xl text-white font-bold text-center ${
+                    judgments[currentRevealPlayerId!] ? "bg-success" : "bg-danger"
+                  }`}>
+                    {judgments[currentRevealPlayerId!] ? "\u2713 Correct!" : "\u2717 Incorrect"}
+                  </div>
+                  <button
+                    onClick={onRevealAdvance}
+                    className="w-full py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
+                  >
+                    Reveal Wager
+                  </button>
+                </div>
+              )}
+
+              {currentRevealStep === "wager" && (
+                <div>
+                  <div className="mb-4 p-3 bg-surface rounded-xl border border-border">
+                    <p className="text-text-secondary text-xs mb-1">Wagered:</p>
+                    <p className="text-accent text-2xl font-bold">
+                      ${submissions[currentRevealPlayerId!]?.wager?.toLocaleString() ?? 0}
+                    </p>
+                  </div>
+                  <button
+                    onClick={onRevealAdvance}
+                    className="w-full py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
+                  >
+                    Reveal Score
+                  </button>
+                </div>
+              )}
+
+              {currentRevealStep === "score" && (
+                <div>
+                  <div className="mb-4 p-3 bg-surface rounded-xl border border-border">
+                    <p className="text-text-secondary text-xs mb-1">New score:</p>
+                    <p className={`text-2xl font-bold ${
+                      currentRevealPlayer.score < 0 ? "text-danger" : "text-accent"
+                    }`}>
+                      ${currentRevealPlayer.score.toLocaleString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={onRevealAdvance}
+                    className="w-full py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
+                  >
+                    {currentRevealIndex < revealOrder.length - 1
+                      ? "Next Player"
+                      : "Reveal Winner"
+                    }
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          WINNER CELEBRATION
+          ═══════════════════════════════════════════════════════════════════ */}
+      {state === "winner" && (
+        <>
+          <Confetti />
+          <div className="w-full max-w-4xl text-center relative z-10">
+            <h2 className="text-3xl md:text-5xl font-bold text-gradient-accent mb-8 animate-fade-in">
+              {isHost ? "We Have a Winner!" : "Final Results"}
+            </h2>
+
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              {[...players]
+                .sort((a, b) => b.score - a.score)
+                .map((player, i) => {
+                  const isWinner = i === 0;
+                  return (
+                    <div
+                      key={player.id}
+                      className={`
+                        rounded-2xl border-2 p-6 transition-all duration-700 w-full sm:w-64
+                        ${isWinner
+                          ? "border-accent bg-accent/10 scale-110 shadow-2xl animate-winner-glow"
+                          : "border-border bg-surface opacity-60 scale-95"
+                        }
+                      `}
+                    >
+                      {isWinner && (
+                        <div className="text-3xl mb-2 animate-bounce">
+                          &#x1f3c6;
+                        </div>
+                      )}
+                      <p className={`font-bold text-xl mb-1 ${isWinner ? "text-accent" : "text-text-primary"}`}>
+                        {player.name}
+                      </p>
+                      {isWinner && (
+                        <p className="text-accent/70 text-xs uppercase tracking-wider mb-2">
+                          Champion
+                        </p>
+                      )}
+                      <p className={`font-bold text-2xl tabular-nums ${
+                        player.score < 0 ? "text-danger" : "text-accent"
+                      }`}>
+                        ${player.score.toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {isHost && (
+              <button
+                onClick={onAdvance}
+                className="px-8 py-4 bg-text-primary text-white font-bold text-xl rounded-full hover:opacity-90"
+              >
+                Finish Game
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

@@ -189,6 +189,11 @@ export default function DisplayPage() {
           lastFinalResult={lastFinalResult}
           countdown={countdownType === "final_answer" ? buzzCountdown : null}
           countdownTotal={countdownType === "final_answer" ? countdownTotalSeconds : null}
+          revealOrder={gameState.finalJeopardy.revealOrder}
+          currentRevealIndex={gameState.finalJeopardy.currentRevealIndex}
+          currentRevealStep={gameState.finalJeopardy.currentRevealStep}
+          judgments={gameState.finalJeopardy.judgments}
+          preRevealScores={gameState.finalJeopardy.preRevealScores}
         />
       </div>
     );
@@ -201,12 +206,17 @@ export default function DisplayPage() {
         {gameOverlay}
         {audioPrompt}
         <FinalJeopardy
-          state="results"
+          state="winner"
           category=""
           clueText=""
           isHost={false}
           players={gameState.players}
           submissions={{}}
+          revealOrder={[]}
+          currentRevealIndex={-1}
+          currentRevealStep="focus"
+          judgments={{}}
+          preRevealScores={{}}
         />
       </div>
     );

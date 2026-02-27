@@ -57,6 +57,7 @@ type GameAction =
         finalScores: ScoreMap;
       };
     }
+  | { type: "REVEAL_SCORE_UPDATE"; data: { playerId: string; newScore: number; finalScores: ScoreMap } }
   | { type: "GAME_FINISHED"; finalScores: ScoreMap }
   | { type: "BUZZ_COUNTDOWN"; secondsRemaining: number; countdownType: CountdownType; totalSeconds: number }
   | { type: "NEW_ROUND_LOADING" };
@@ -306,6 +307,8 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
 
     case "FINAL_JUDGE_RESULT":
       if (!state.gameState) return state;
+      // During reveal: store judgment info but do NOT update scores
+      // (scores are delayed until the "score" reveal step)
       return {
         ...state,
         lastFinalResult: {
@@ -315,6 +318,12 @@ function gameReducer(state: GameUIState, action: GameAction): GameUIState {
           wager: action.data.wager,
           answer: action.data.answer,
         },
+      };
+
+    case "REVEAL_SCORE_UPDATE":
+      if (!state.gameState) return state;
+      return {
+        ...state,
         gameState: {
           ...state.gameState,
           scores: action.data.finalScores,
@@ -414,6 +423,11 @@ export function useGameState(socket: TypedSocket | null) {
         answer: string;
         finalScores: ScoreMap;
       }) => dispatch({ type: "FINAL_JUDGE_RESULT", data }),
+      "game:reveal_score_update": (data: {
+        playerId: string;
+        newScore: number;
+        finalScores: ScoreMap;
+      }) => dispatch({ type: "REVEAL_SCORE_UPDATE", data }),
       "game:finished": (data: { finalScores: ScoreMap }) =>
         dispatch({ type: "GAME_FINISHED", finalScores: data.finalScores }),
       "game:buzz_countdown": (data: { secondsRemaining: number; type: CountdownType; totalSeconds: number }) =>
