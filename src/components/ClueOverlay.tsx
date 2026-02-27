@@ -94,11 +94,11 @@ export default function ClueOverlay({
 
           {/* Player answering */}
           {clueState === "player_answering" && answeringPlayerName && (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2 animate-buzz-in-reveal">
               <p className="text-text-secondary text-sm uppercase tracking-widest">
                 Answering
               </p>
-              <p className="text-text-primary text-3xl md:text-4xl font-bold">
+              <p className="text-text-primary text-4xl md:text-5xl font-bold">
                 {answeringPlayerName}
               </p>
               {/* Time's Up indicator when answer timer expires */}

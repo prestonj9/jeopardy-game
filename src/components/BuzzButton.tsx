@@ -1,7 +1,7 @@
 "use client";
 
 interface BuzzButtonProps {
-  state: "disabled" | "active" | "buzzed" | "locked_out";
+  state: "disabled" | "active" | "buzzed" | "won" | "locked_out";
   onBuzz: () => void;
   countdown?: number | null;
   countdownTotalSeconds?: number | null;
@@ -9,7 +9,7 @@ interface BuzzButtonProps {
 
 export default function BuzzButton({ state, onBuzz, countdown, countdownTotalSeconds }: BuzzButtonProps) {
   const totalSecs = countdownTotalSeconds ?? 4;
-  const showCountdown = (state === "disabled" || state === "active") && countdown !== null && countdown !== undefined && countdown > 0;
+  const showCountdown = (state === "disabled" || state === "active" || state === "won") && countdown !== null && countdown !== undefined && countdown > 0;
 
   const config = {
     disabled: {
@@ -32,6 +32,13 @@ export default function BuzzButton({ state, onBuzz, countdown, countdownTotalSec
       textColor: "text-white",
       cursor: "cursor-not-allowed",
       animate: "",
+    },
+    won: {
+      bg: "bg-gradient-to-r from-warning to-amber-400",
+      text: "YOUR TURN!",
+      textColor: "text-white",
+      cursor: "cursor-not-allowed",
+      animate: "shadow-glow-warning",
     },
     locked_out: {
       bg: "bg-surface",

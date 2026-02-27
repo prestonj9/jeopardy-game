@@ -108,7 +108,7 @@ export default function RemoteClueView({
         {/* Player answering — show name + judge buttons + Time's Up */}
         {clueState === "player_answering" && answeringPlayerName && (
           <div className="space-y-3">
-            <div className="text-center">
+            <div className="text-center animate-buzz-in-reveal">
               <p className="text-text-secondary text-xs uppercase tracking-wider">
                 Answering
               </p>

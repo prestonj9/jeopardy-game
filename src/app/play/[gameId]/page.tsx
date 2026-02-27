@@ -269,12 +269,20 @@ export default function PlayerGamePage() {
   const isDDWagerPhase = currentClue?.state === "daily_double_wager";
   const isDDForMe = isDDWagerPhase && currentClue?.answeringPlayerId === playerId;
 
+  const answeringPlayerName = currentClue?.answeringPlayerId
+    ? gameState.players.find((p) => p.id === currentClue.answeringPlayerId)?.name
+    : undefined;
+  const someoneElseAnswering =
+    currentClue?.state === "player_answering" && !isAnswering;
+
   // Determine buzz button state
-  let buzzState: "disabled" | "active" | "buzzed" | "locked_out" = "disabled";
+  let buzzState: "disabled" | "active" | "buzzed" | "won" | "locked_out" = "disabled";
   if (currentClue) {
-    if (isLockedOut) {
+    if (isAnswering && currentClue.state === "player_answering") {
+      buzzState = "won";
+    } else if (isLockedOut) {
       buzzState = "locked_out";
-    } else if (hasBuzzed || isAnswering) {
+    } else if (hasBuzzed) {
       buzzState = "buzzed";
     } else if (currentClue.state === "buzzing_open") {
       buzzState = "active";
@@ -379,6 +387,26 @@ export default function PlayerGamePage() {
             {currentClue.state === "awaiting_reveal" && (
               <div className="mb-4 p-3 rounded-lg font-bold text-lg text-text-secondary">
                 No one answered
+              </div>
+            )}
+
+            {/* Who buzzed in — shown to other players */}
+            {someoneElseAnswering && answeringPlayerName && (
+              <div className="mb-4 animate-buzz-in-reveal">
+                <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">
+                  Answering
+                </p>
+                <p className="text-text-primary text-2xl font-bold">
+                  {answeringPlayerName}
+                </p>
+                {buzzCountdown !== null && buzzCountdown > 0 && countdownTotalSeconds && (
+                  <div className="mt-3 w-full h-1 bg-border rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-warning rounded-full transition-all duration-1000 ease-linear"
+                      style={{ width: `${(buzzCountdown / countdownTotalSeconds) * 100}%` }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
