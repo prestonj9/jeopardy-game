@@ -21,6 +21,5 @@ COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/tailwind.config.ts ./
 COPY --from=builder /app/postcss.config.mjs ./
 RUN mkdir -p /app/data
-VOLUME ["/app/data"]
 EXPOSE 3000
 CMD ["node", "--experimental-transform-types", "server.ts"]
