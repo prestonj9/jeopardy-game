@@ -12,6 +12,15 @@ import type {
   GenerateRapidFireResponse,
 } from "./types.ts";
 import { generateBoard } from "./ai-generator.ts";
+import {
+  getCachedBoard,
+  incrementServed,
+  saveBoard,
+  getPoolCount,
+  parseCachedClassic,
+  parseCachedRapidFire,
+  MAX_POOL_SIZE,
+} from "./board-cache.ts";
 
 const nanoid = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
 
@@ -26,6 +35,8 @@ declare global {
   var __jeopardy_cleanup__: ReturnType<typeof setInterval> | undefined;
   // eslint-disable-next-line no-var
   var __jeopardy_io__: import("socket.io").Server | undefined;
+  // eslint-disable-next-line no-var
+  var __jeopardy_db__: import("better-sqlite3").Database | undefined;
 }
 
 if (!globalThis.__jeopardy_games__) {
@@ -156,18 +167,90 @@ export function createGameWithBackground(
   return game;
 }
 
+/**
+ * Look up a cached board or generate a fresh one. Saves new boards to the cache.
+ * Shared by startBackgroundGeneration and host:new_round.
+ */
+export async function generateOrLookup(
+  params: GenerateBoardRequest
+): Promise<{ result: GenerateBoardResponse | GenerateRapidFireResponse; fromCache: boolean }> {
+  const db = globalThis.__jeopardy_db__;
+  const gameMode = params.gameMode ?? "classic";
+
+  // Cache lookup (topic-based only, not uploads/links)
+  if (db && params.mode === "topic" && params.topic) {
+    const cached = getCachedBoard(db, params.topic, gameMode, params.clueCount);
+
+    if (cached) {
+      console.log(
+        `[cache] HIT for "${params.topic}" (${gameMode}), served ${cached.times_served + 1} times`
+      );
+      incrementServed(db, cached.id);
+
+      const result = gameMode === "rapid_fire"
+        ? parseCachedRapidFire(cached)
+        : parseCachedClassic(cached);
+
+      return { result, fromCache: true };
+    }
+
+    console.log(`[cache] MISS for "${params.topic}" (${gameMode})`);
+  }
+
+  // Generate fresh board
+  const result = await generateBoard(params);
+
+  // Save to cache (topic-based only)
+  if (db && params.mode === "topic" && params.topic) {
+    try {
+      if (gameMode === "rapid_fire") {
+        const rfResult = result as GenerateRapidFireResponse;
+        saveBoard(db, params.topic, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount);
+      } else {
+        const classicResult = result as GenerateBoardResponse;
+        saveBoard(db, params.topic, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6");
+      }
+      console.log(`[cache] Saved board for "${params.topic}"`);
+    } catch (cacheErr) {
+      console.error("[cache] Failed to save (non-fatal):", cacheErr);
+    }
+  }
+
+  return { result, fromCache: false };
+}
+
+/**
+ * Fire-and-forget: generate a fresh board and add it to the cache pool.
+ */
+async function growPool(params: GenerateBoardRequest): Promise<void> {
+  const db = globalThis.__jeopardy_db__;
+  if (!db || !params.topic) return;
+
+  const result = await generateBoard(params);
+  const gameMode = params.gameMode ?? "classic";
+
+  if (gameMode === "rapid_fire") {
+    const rfResult = result as GenerateRapidFireResponse;
+    saveBoard(db, params.topic, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount);
+  } else {
+    const classicResult = result as GenerateBoardResponse;
+    saveBoard(db, params.topic, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6");
+  }
+
+  console.log(`[cache] Pool growth complete for "${params.topic}"`);
+}
+
 export async function startBackgroundGeneration(game: Game): Promise<void> {
   try {
     console.log(`[bg-gen] Starting ${game.gameMode} board generation for game ${game.id}`);
-    const result = await generateBoard(game.generationParams!);
+    const params = game.generationParams!;
+    const { result, fromCache } = await generateOrLookup(params);
 
     if (game.gameMode === "rapid_fire") {
-      // Rapid fire: populate flat clue list
       const rfResult = result as GenerateRapidFireResponse;
       game.rapidFireClues = rfResult.clues;
       game.currentClueIndex = -1;
     } else {
-      // Classic: populate board grid
       const classicResult = result as GenerateBoardResponse;
       game.board = classicResult.board;
     }
@@ -187,7 +270,7 @@ export async function startBackgroundGeneration(game: Game): Promise<void> {
     game.boardStatus = "ready";
     delete game.boardError;
 
-    console.log(`[bg-gen] Board ready for game ${game.id}`);
+    console.log(`[bg-gen] Board ready for game ${game.id}${fromCache ? " (from cache)" : ""}`);
 
     // Broadcast to all clients in the game room
     const io = globalThis.__jeopardy_io__;
@@ -195,8 +278,6 @@ export async function startBackgroundGeneration(game: Game): Promise<void> {
       io.to(game.id).emit("game:board_ready");
 
       // If host already clicked Start, auto-start now
-      // Batch board ready + game start into a single state_sync
-      // to avoid flashing back to lobby between two syncs
       if (game.startRequested && game.players.size > 0) {
         game.status = "active";
         game.startRequested = false;
@@ -205,6 +286,20 @@ export async function startBackgroundGeneration(game: Game): Promise<void> {
       }
 
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
+    }
+
+    // Pool growth: if served from cache and pool isn't full, generate a fresh board in the background
+    if (fromCache && params.mode === "topic" && params.topic) {
+      const db = globalThis.__jeopardy_db__;
+      if (db) {
+        const poolCount = getPoolCount(db, params.topic, params.gameMode ?? "classic", params.clueCount);
+        if (poolCount < MAX_POOL_SIZE) {
+          console.log(`[cache] Pool for "${params.topic}" is ${poolCount}/${MAX_POOL_SIZE}, growing in background`);
+          growPool(params).catch((err) => {
+            console.error(`[cache] Background pool growth failed for "${params.topic}":`, err);
+          });
+        }
+      }
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Board generation failed";

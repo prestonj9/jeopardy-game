@@ -222,6 +222,25 @@ export interface SerializableGameState {
   totalClues: number;
 }
 
+// ── Parallel Generation Chunk Response ────────────────────────────────────────
+
+/** Response from a single parallel generation call (3 categories) */
+export interface AIChunkResponse {
+  categories: Array<{
+    name: string;
+    clues: Array<{
+      value: number;
+      clueText: string;
+      correctResponse: string;
+    }>;
+  }>;
+  finalJeopardy?: {
+    category: string;
+    clueText: string;
+    correctResponse: string;
+  };
+}
+
 // ── AI Board Response (shared between generator & validator) ─────────────────
 
 export interface AIBoardResponse {

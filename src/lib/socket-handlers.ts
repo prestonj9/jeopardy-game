@@ -17,8 +17,9 @@ import {
   serializeGameState,
   resetGameForNewRound,
   startBackgroundGeneration,
+  generateOrLookup,
 } from "./game-manager.ts";
-import { generateBoard } from "./ai-generator.ts";
+import { getPoolCount, MAX_POOL_SIZE } from "./board-cache.ts";
 
 type TypedServer = Server<
   ClientToServerEvents,
@@ -789,13 +790,15 @@ export function registerSocketHandlers(io: TypedServer): void {
       io.to(game.id).emit("game:new_round_loading");
 
       try {
-        console.log(`[new_round] Generating ${game.gameMode} board for topic: "${topic}" in game ${game.id} (resetScores: ${resetScores})`);
-        const genResult = await generateBoard({
-          mode: "topic",
+        const genParams = {
+          mode: "topic" as const,
           topic,
           gameMode: game.gameMode,
           clueCount: game.generationParams?.clueCount,
-        });
+        };
+
+        console.log(`[new_round] Generating ${game.gameMode} board for topic: "${topic}" in game ${game.id} (resetScores: ${resetScores})`);
+        const { result: genResult, fromCache } = await generateOrLookup(genParams);
 
         if (game.gameMode === "rapid_fire") {
           const rfResult = genResult as GenerateRapidFireResponse;
@@ -805,11 +808,28 @@ export function registerSocketHandlers(io: TypedServer): void {
           resetGameForNewRound(game, classicResult.board, classicResult.finalJeopardy, undefined, resetScores);
         }
 
-        console.log(`[new_round] Board generated, game ${game.id} reset to active`);
+        // Update generation params for future rounds
+        game.generationParams = genParams;
+
+        console.log(`[new_round] Board ${fromCache ? "served from cache" : "generated"}, game ${game.id} reset to active`);
         io.to(game.id).emit("game:state_sync", serializeGameState(game));
 
         // Send correct responses to host
         socket.emit("game:host_clue_answer", { correctResponse: "" });
+
+        // Pool growth if served from cache
+        if (fromCache) {
+          const db = globalThis.__jeopardy_db__;
+          if (db) {
+            const poolCount = getPoolCount(db, topic, game.gameMode, genParams.clueCount);
+            if (poolCount < MAX_POOL_SIZE) {
+              console.log(`[cache] Pool for "${topic}" is ${poolCount}/${MAX_POOL_SIZE}, growing in background`);
+              generateOrLookup(genParams).catch((err) => {
+                console.error(`[cache] Background pool growth failed:`, err);
+              });
+            }
+          }
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Board generation failed";
         console.error(`[new_round] Failed for game ${game.id}:`, message);
