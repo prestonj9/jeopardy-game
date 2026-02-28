@@ -12,12 +12,12 @@
   --fill: 0%;
 }
 .slider-filled::-webkit-slider-runnable-track {
-  background: linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) var(--fill), rgb(229 231 235) var(--fill), rgb(229 231 235) 100%);
+  background: linear-gradient(to right, #0066FF 0%, #0066FF var(--fill), rgb(229 231 235) var(--fill), rgb(229 231 235) 100%);
   border-radius: 9999px;
   height: 0.5rem;
 }
 .slider-filled::-moz-range-track {
-  background: linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) var(--fill), rgb(229 231 235) var(--fill), rgb(229 231 235) 100%);
+  background: linear-gradient(to right, #0066FF 0%, #0066FF var(--fill), rgb(229 231 235) var(--fill), rgb(229 231 235) 100%);
   border-radius: 9999px;
   height: 0.5rem;
 }
@@ -26,7 +26,7 @@
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: #0066FF;
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   margin-top: -0.375rem;
@@ -36,13 +36,13 @@
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: #0066FF;
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   cursor: pointer;
 }
 .slider-filled::-moz-range-progress {
-  background: var(--color-accent);
+  background: #0066FF;
   border-radius: 9999px;
   height: 0.5rem;
 }
