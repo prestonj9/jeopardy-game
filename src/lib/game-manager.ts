@@ -219,25 +219,41 @@ export async function generateOrLookup(
   return { result, fromCache: false };
 }
 
+/** How many boards to generate in parallel when growing the pool */
+const POOL_GROWTH_BATCH = 3;
+
 /**
- * Fire-and-forget: generate a fresh board and add it to the cache pool.
+ * Fire-and-forget: generate fresh boards and add them to the cache pool.
+ * Generates up to POOL_GROWTH_BATCH boards in parallel, capped at MAX_POOL_SIZE.
  */
-async function growPool(params: GenerateBoardRequest): Promise<void> {
+export async function growPool(params: GenerateBoardRequest, currentPoolSize: number): Promise<void> {
   const db = globalThis.__jeopardy_db__;
   if (!db || !params.topic) return;
 
-  const result = await generateBoard(params);
   const gameMode = params.gameMode ?? "classic";
+  const remaining = MAX_POOL_SIZE - currentPoolSize;
+  const batchSize = Math.min(POOL_GROWTH_BATCH, remaining);
 
-  if (gameMode === "rapid_fire") {
-    const rfResult = result as GenerateRapidFireResponse;
-    saveBoard(db, params.topic, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount);
-  } else {
-    const classicResult = result as GenerateBoardResponse;
-    saveBoard(db, params.topic, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6");
-  }
+  if (batchSize <= 0) return;
 
-  console.log(`[cache] Pool growth complete for "${params.topic}"`);
+  console.log(`[cache] Growing pool for "${params.topic}" by ${batchSize} boards in parallel`);
+
+  const promises = Array.from({ length: batchSize }, () =>
+    generateBoard(params).then((result) => {
+      if (gameMode === "rapid_fire") {
+        const rfResult = result as GenerateRapidFireResponse;
+        saveBoard(db, params.topic!, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount);
+      } else {
+        const classicResult = result as GenerateBoardResponse;
+        saveBoard(db, params.topic!, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6");
+      }
+    })
+  );
+
+  const results = await Promise.allSettled(promises);
+  const succeeded = results.filter((r) => r.status === "fulfilled").length;
+  const failed = results.filter((r) => r.status === "rejected").length;
+  console.log(`[cache] Pool growth for "${params.topic}": ${succeeded} added, ${failed} failed`);
 }
 
 export async function startBackgroundGeneration(game: Game): Promise<void> {
@@ -288,14 +304,14 @@ export async function startBackgroundGeneration(game: Game): Promise<void> {
       io.to(game.id).emit("game:state_sync", serializeGameState(game));
     }
 
-    // Pool growth: if served from cache and pool isn't full, generate a fresh board in the background
-    if (fromCache && params.mode === "topic" && params.topic) {
+    // Pool growth: if pool isn't full, generate more boards in the background
+    if (params.mode === "topic" && params.topic) {
       const db = globalThis.__jeopardy_db__;
       if (db) {
         const poolCount = getPoolCount(db, params.topic, params.gameMode ?? "classic", params.clueCount);
         if (poolCount < MAX_POOL_SIZE) {
           console.log(`[cache] Pool for "${params.topic}" is ${poolCount}/${MAX_POOL_SIZE}, growing in background`);
-          growPool(params).catch((err) => {
+          growPool(params, poolCount).catch((err) => {
             console.error(`[cache] Background pool growth failed for "${params.topic}":`, err);
           });
         }

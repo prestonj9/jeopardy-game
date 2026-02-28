@@ -57,13 +57,13 @@ export function getCachedBoard(
 
   if (gameMode === "rapid_fire" && clueCount) {
     const stmt = db.prepare(
-      `SELECT * FROM boards WHERE topic = ? AND game_mode = ? AND clue_count = ? ORDER BY RANDOM() LIMIT 1`
+      `SELECT * FROM boards WHERE topic = ? AND game_mode = ? AND clue_count = ? ORDER BY times_served ASC, RANDOM() LIMIT 1`
     );
     return stmt.get(normalized, gameMode, clueCount) as CachedBoard | undefined;
   }
 
   const stmt = db.prepare(
-    `SELECT * FROM boards WHERE topic = ? AND game_mode = ? ORDER BY RANDOM() LIMIT 1`
+    `SELECT * FROM boards WHERE topic = ? AND game_mode = ? ORDER BY times_served ASC, RANDOM() LIMIT 1`
   );
   return stmt.get(normalized, gameMode) as CachedBoard | undefined;
 }

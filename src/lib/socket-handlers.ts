@@ -18,6 +18,7 @@ import {
   resetGameForNewRound,
   startBackgroundGeneration,
   generateOrLookup,
+  growPool,
 } from "./game-manager.ts";
 import { getPoolCount, MAX_POOL_SIZE } from "./board-cache.ts";
 
@@ -817,14 +818,14 @@ export function registerSocketHandlers(io: TypedServer): void {
         // Send correct responses to host
         socket.emit("game:host_clue_answer", { correctResponse: "" });
 
-        // Pool growth if served from cache
-        if (fromCache) {
+        // Pool growth: grow pool in background regardless of cache hit/miss
+        {
           const db = globalThis.__jeopardy_db__;
           if (db) {
             const poolCount = getPoolCount(db, topic, game.gameMode, genParams.clueCount);
             if (poolCount < MAX_POOL_SIZE) {
               console.log(`[cache] Pool for "${topic}" is ${poolCount}/${MAX_POOL_SIZE}, growing in background`);
-              generateOrLookup(genParams).catch((err) => {
+              growPool(genParams, poolCount).catch((err) => {
                 console.error(`[cache] Background pool growth failed:`, err);
               });
             }
