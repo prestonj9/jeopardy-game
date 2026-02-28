@@ -7,6 +7,38 @@
   --foreground: #1D1D1F;
 }
 
+/* Filled range slider track */
+.slider-filled::-webkit-slider-runnable-track {
+  background: inherit;
+  border-radius: 9999px;
+  height: 0.5rem;
+}
+.slider-filled::-moz-range-track {
+  background: inherit;
+  border-radius: 9999px;
+  height: 0.5rem;
+}
+.slider-filled::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  margin-top: -0.375rem;
+  cursor: pointer;
+}
+.slider-filled::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
