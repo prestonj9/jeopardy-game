@@ -150,8 +150,8 @@ export default function CreatePage() {
               max={30}
               value={clueCount}
               onChange={(e) => setClueCount(Number(e.target.value))}
-              className="w-full h-2 rounded-full appearance-none cursor-pointer accent-accent slider-filled"
-              style={{ background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${((clueCount - 5) / 25) * 100}%, rgb(229 231 235) ${((clueCount - 5) / 25) * 100}%, rgb(229 231 235) 100%)` }}
+              className="w-full h-2 rounded-full appearance-none cursor-pointer slider-filled"
+              style={{ "--fill": `${((clueCount - 5) / 25) * 100}%` } as React.CSSProperties}
             />
             <div className="flex justify-between text-text-tertiary text-xs mt-1">
               <span>5 (quick)</span>

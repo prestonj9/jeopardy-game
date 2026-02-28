@@ -8,13 +8,16 @@
 }
 
 /* Filled range slider track */
+.slider-filled {
+  --fill: 0%;
+}
 .slider-filled::-webkit-slider-runnable-track {
-  background: inherit;
+  background: linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) var(--fill), rgb(229 231 235) var(--fill), rgb(229 231 235) 100%);
   border-radius: 9999px;
   height: 0.5rem;
 }
 .slider-filled::-moz-range-track {
-  background: inherit;
+  background: linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) var(--fill), rgb(229 231 235) var(--fill), rgb(229 231 235) 100%);
   border-radius: 9999px;
   height: 0.5rem;
 }
@@ -37,6 +40,11 @@
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   cursor: pointer;
+}
+.slider-filled::-moz-range-progress {
+  background: var(--color-accent);
+  border-radius: 9999px;
+  height: 0.5rem;
 }
 
 body {
