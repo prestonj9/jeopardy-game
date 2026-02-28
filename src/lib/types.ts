@@ -284,6 +284,7 @@ export interface GenerateBoardRequest {
   content?: string; // extracted text from uploaded file; truncate to 50,000 chars
   gameMode?: GameMode; // defaults to "classic"
   clueCount?: number; // for rapid_fire mode (5-30, default 10)
+  subtopics?: string[]; // specific subtopics to use for category generation (set by game-manager)
 }
 
 export interface GenerateBoardResponse {

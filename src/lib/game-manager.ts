@@ -11,7 +11,7 @@ import type {
   GenerateBoardResponse,
   GenerateRapidFireResponse,
 } from "./types.ts";
-import { generateBoard } from "./ai-generator.ts";
+import { generateBoard, generateSubtopics } from "./ai-generator.ts";
 import {
   getCachedBoard,
   incrementServed,
@@ -19,6 +19,13 @@ import {
   getPoolCount,
   parseCachedClassic,
   parseCachedRapidFire,
+  normalizeTopic,
+  getSubtopicCount,
+  pickSubtopics,
+  markSubtopicsUsed,
+  saveSubtopics,
+  getExistingSubtopics,
+  getMinSubtopicUsage,
   MAX_POOL_SIZE,
 } from "./board-cache.ts";
 
@@ -167,8 +174,69 @@ export function createGameWithBackground(
   return game;
 }
 
+// ── Subtopic Orchestration ────────────────────────────────────────────────────
+
+const SUBTOPIC_BATCH_SIZE = 100;  // How many subtopics to generate per Haiku call
+const SUBTOPICS_PER_CLASSIC = 7;  // 3 for chunk A + 3 for chunk B + 1 for Final Jeopardy
+
+/** In-memory lock to prevent concurrent subtopic generation for the same topic */
+const subtopicGenerationLocks = new Map<string, Promise<void>>();
+
+/**
+ * Ensure subtopics exist for a topic, generating them via Haiku if needed.
+ * Returns the selected subtopics for one board.
+ */
+async function ensureSubtopicsAndPick(
+  db: import("better-sqlite3").Database,
+  topic: string,
+  count: number = SUBTOPICS_PER_CLASSIC
+): Promise<string[]> {
+  const normalized = normalizeTopic(topic);
+
+  // Check if we need to generate subtopics
+  const existingCount = getSubtopicCount(db, normalized);
+
+  if (existingCount < count) {
+    // Need to generate subtopics — use lock to prevent duplicate concurrent generation
+    if (!subtopicGenerationLocks.has(normalized)) {
+      const promise = (async () => {
+        try {
+          console.log(`[subtopics] Generating ${SUBTOPIC_BATCH_SIZE} subtopics for "${topic}"`);
+          const existing = getExistingSubtopics(db, normalized);
+          const newSubtopics = await generateSubtopics(topic, SUBTOPIC_BATCH_SIZE, existing);
+          saveSubtopics(db, normalized, newSubtopics);
+          console.log(`[subtopics] Saved ${newSubtopics.length} subtopics for "${topic}"`);
+        } catch (err) {
+          console.error(`[subtopics] Failed to generate subtopics for "${topic}":`, err);
+        } finally {
+          subtopicGenerationLocks.delete(normalized);
+        }
+      })();
+      subtopicGenerationLocks.set(normalized, promise);
+    }
+    await subtopicGenerationLocks.get(normalized);
+  }
+
+  // Pick least-used subtopics
+  const picked = pickSubtopics(db, normalized, count);
+
+  if (picked.length < count) {
+    // Couldn't pick enough — subtopics exhausted, trigger background regeneration
+    console.log(`[subtopics] Only ${picked.length}/${count} available for "${topic}", regenerating in background`);
+    const existing = getExistingSubtopics(db, normalized);
+    generateSubtopics(topic, SUBTOPIC_BATCH_SIZE, existing)
+      .then((newSubs) => saveSubtopics(db, normalized, newSubs))
+      .catch((err) => console.error(`[subtopics] Background regeneration failed:`, err));
+  }
+
+  return picked;
+}
+
+// ── Cache-Aware Generation ───────────────────────────────────────────────────
+
 /**
  * Look up a cached board or generate a fresh one. Saves new boards to the cache.
+ * Uses subtopics for diversity when generating fresh boards.
  * Shared by startBackgroundGeneration and host:new_round.
  */
 export async function generateOrLookup(
@@ -197,20 +265,56 @@ export async function generateOrLookup(
     console.log(`[cache] MISS for "${params.topic}" (${gameMode})`);
   }
 
+  // Pick subtopics for diversity (topic mode only)
+  let selectedSubtopics: string[] | undefined;
+  let genParams = params;
+
+  if (db && params.mode === "topic" && params.topic) {
+    try {
+      const subtopicCount = gameMode === "rapid_fire"
+        ? Math.min(SUBTOPICS_PER_CLASSIC, Math.ceil((params.clueCount ?? 10) / 2))
+        : SUBTOPICS_PER_CLASSIC;
+
+      selectedSubtopics = await ensureSubtopicsAndPick(db, params.topic, subtopicCount);
+      if (selectedSubtopics.length > 0) {
+        genParams = { ...params, subtopics: selectedSubtopics };
+        console.log(`[subtopics] Board will use: [${selectedSubtopics.join(", ")}]`);
+      }
+    } catch (err) {
+      console.error(`[subtopics] Failed to pick subtopics, falling back to broad generation:`, err);
+    }
+  }
+
   // Generate fresh board
-  const result = await generateBoard(params);
+  const result = await generateBoard(genParams);
 
   // Save to cache (topic-based only)
   if (db && params.mode === "topic" && params.topic) {
     try {
       if (gameMode === "rapid_fire") {
         const rfResult = result as GenerateRapidFireResponse;
-        saveBoard(db, params.topic, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount);
+        saveBoard(db, params.topic, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount, selectedSubtopics);
       } else {
         const classicResult = result as GenerateBoardResponse;
-        saveBoard(db, params.topic, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6");
+        saveBoard(db, params.topic, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6", undefined, selectedSubtopics);
       }
+
+      // Mark subtopics as used after successful save
+      if (selectedSubtopics && selectedSubtopics.length > 0) {
+        markSubtopicsUsed(db, params.topic, selectedSubtopics);
+      }
+
       console.log(`[cache] Saved board for "${params.topic}"`);
+
+      // Proactive subtopic replenishment: if all subtopics have been used 2+ times, generate more
+      const minUsage = getMinSubtopicUsage(db, params.topic);
+      if (minUsage !== null && minUsage >= 2) {
+        console.log(`[subtopics] All subtopics for "${params.topic}" used ${minUsage}+ times, generating more in background`);
+        const existing = getExistingSubtopics(db, normalizeTopic(params.topic));
+        generateSubtopics(params.topic, SUBTOPIC_BATCH_SIZE, existing)
+          .then((newSubs) => saveSubtopics(db, normalizeTopic(params.topic!), newSubs))
+          .catch((err) => console.error(`[subtopics] Proactive regeneration failed:`, err));
+      }
     } catch (cacheErr) {
       console.error("[cache] Failed to save (non-fatal):", cacheErr);
     }
@@ -224,6 +328,7 @@ const POOL_GROWTH_BATCH = 3;
 
 /**
  * Fire-and-forget: generate fresh boards and add them to the cache pool.
+ * Each board picks its own subtopics for maximum diversity.
  * Generates up to POOL_GROWTH_BATCH boards in parallel, capped at MAX_POOL_SIZE.
  */
 export async function growPool(params: GenerateBoardRequest, currentPoolSize: number): Promise<void> {
@@ -238,17 +343,39 @@ export async function growPool(params: GenerateBoardRequest, currentPoolSize: nu
 
   console.log(`[cache] Growing pool for "${params.topic}" by ${batchSize} boards in parallel`);
 
-  const promises = Array.from({ length: batchSize }, () =>
-    generateBoard(params).then((result) => {
-      if (gameMode === "rapid_fire") {
-        const rfResult = result as GenerateRapidFireResponse;
-        saveBoard(db, params.topic!, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount);
-      } else {
-        const classicResult = result as GenerateBoardResponse;
-        saveBoard(db, params.topic!, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6");
+  const promises = Array.from({ length: batchSize }, async () => {
+    // Each board picks its own subtopics for diversity
+    let boardParams = { ...params };
+    let selectedSubtopics: string[] | undefined;
+
+    try {
+      const subtopicCount = gameMode === "rapid_fire"
+        ? Math.min(SUBTOPICS_PER_CLASSIC, Math.ceil((params.clueCount ?? 10) / 2))
+        : SUBTOPICS_PER_CLASSIC;
+
+      selectedSubtopics = await ensureSubtopicsAndPick(db, params.topic!, subtopicCount);
+      if (selectedSubtopics.length > 0) {
+        boardParams = { ...boardParams, subtopics: selectedSubtopics };
       }
-    })
-  );
+    } catch {
+      // Fall back to broad generation
+    }
+
+    const result = await generateBoard(boardParams);
+
+    if (gameMode === "rapid_fire") {
+      const rfResult = result as GenerateRapidFireResponse;
+      saveBoard(db, params.topic!, "rapid_fire", JSON.stringify(rfResult.clues), JSON.stringify(rfResult.finalJeopardy), "claude-opus-4-6", params.clueCount, selectedSubtopics);
+    } else {
+      const classicResult = result as GenerateBoardResponse;
+      saveBoard(db, params.topic!, "classic", JSON.stringify(classicResult.board), JSON.stringify(classicResult.finalJeopardy), "claude-opus-4-6", undefined, selectedSubtopics);
+    }
+
+    // Mark subtopics used after successful save
+    if (selectedSubtopics && selectedSubtopics.length > 0) {
+      markSubtopicsUsed(db, params.topic!, selectedSubtopics);
+    }
+  });
 
   const results = await Promise.allSettled(promises);
   const succeeded = results.filter((r) => r.status === "fulfilled").length;

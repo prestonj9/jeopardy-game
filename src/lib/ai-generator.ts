@@ -201,6 +201,45 @@ function isAuthError(err: unknown): boolean {
   return errMsg.includes("authentication") || errMsg.includes("401") || errMsg.includes("api-key");
 }
 
+// ── Subtopic Generation (Haiku — cheap and fast) ─────────────────────────────
+
+export async function generateSubtopics(
+  topic: string,
+  count: number,
+  existingSubtopics: string[]
+): Promise<string[]> {
+  const exclusionClause = existingSubtopics.length > 0
+    ? `\n\nDo NOT include any of these subtopics (already generated):\n${existingSubtopics.map(s => `- ${s}`).join("\n")}`
+    : "";
+
+  const userMessage = `Generate exactly ${count} specific subtopics for Jeopardy categories about: ${topic}${exclusionClause}`;
+
+  const response = await client.messages.create({
+    model: MODEL_FIX, // Haiku — fast and cheap for list generation
+    max_tokens: 4000,
+    system: SUBTOPIC_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userMessage }],
+  });
+
+  const text = extractTextFromResponse(response.content);
+  return parseJSON<string[]>(text);
+}
+
+// ── Subtopic Generation Prompt (Haiku) ────────────────────────────────────────
+
+const SUBTOPIC_SYSTEM_PROMPT = `You generate specific subtopics for Jeopardy board creation. Given a broad topic, produce a list of specific, distinct subtopics that could each serve as the basis for a Jeopardy category.
+
+Rules:
+- Each subtopic should be specific enough to generate 5 factual clues about it
+- Subtopics should span the full breadth of the topic — cover obscure and well-known areas equally
+- Avoid generic/broad subtopics (e.g. "Famous People" is too broad; "Women Mathematicians of the 18th Century" is good)
+- Each subtopic should be 2-8 words, a specific noun phrase
+- No overlap: subtopics should be clearly distinct from each other
+- Aim for surprising, creative, and educational variety
+
+Respond with ONLY a JSON array of strings — no markdown, no explanation:
+["subtopic 1", "subtopic 2", ...]`;
+
 // ── Daily Double Assignment (in code, not by AI) ─────────────────────────────
 
 function assignDailyDouble(categoryCount: number): { categoryIndex: number; clueIndex: number } {
@@ -280,8 +319,40 @@ async function generateBoardParallel(req: GenerateBoardRequest): Promise<AIBoard
   console.log("[gen] Starting parallel Opus generation (2 chunks)");
 
   const topic = req.topic ?? "General Knowledge";
-  const userA = `Generate 3 Jeopardy categories about: ${topic}\nFocus on creative, unexpected angles. Make it fun and varied.`;
-  const userB = `Generate 3 Jeopardy categories and 1 Final Jeopardy about: ${topic}\nCover different aspects than what another generator might pick. Explore surprising connections.`;
+
+  let userA: string;
+  let userB: string;
+
+  if (req.subtopics && req.subtopics.length >= 6) {
+    // Subtopic-driven generation: each chunk gets specific subtopics
+    const subsA = req.subtopics.slice(0, 3);
+    const subsB = req.subtopics.slice(3, 6);
+    const finalSub = req.subtopics[6]; // optional 7th for Final Jeopardy
+
+    userA = `Generate 3 Jeopardy categories about: ${topic}
+Each category MUST be based on one of these specific subtopics:
+1. ${subsA[0]}
+2. ${subsA[1]}
+3. ${subsA[2]}
+Use each subtopic as the basis for a creative category name and all 5 clues in that category.`;
+
+    userB = `Generate 3 Jeopardy categories and 1 Final Jeopardy about: ${topic}
+Each category MUST be based on one of these specific subtopics:
+1. ${subsB[0]}
+2. ${subsB[1]}
+3. ${subsB[2]}
+Use each subtopic as the basis for a creative category name and all 5 clues in that category.${
+      finalSub
+        ? `\nFinal Jeopardy should be based on: ${finalSub}`
+        : `\nFinal Jeopardy should cover a different aspect of ${topic}.`
+    }`;
+
+    console.log(`[gen] Using subtopics: [${req.subtopics.join(", ")}]`);
+  } else {
+    // Fallback: broad prompts (no subtopics available)
+    userA = `Generate 3 Jeopardy categories about: ${topic}\nFocus on creative, unexpected angles. Make it fun and varied.`;
+    userB = `Generate 3 Jeopardy categories and 1 Final Jeopardy about: ${topic}\nCover different aspects than what another generator might pick. Explore surprising connections.`;
+  }
 
   const [chunkA, chunkB] = await Promise.all([
     callOpusChunk(CHUNK_SYSTEM_PROMPT_A, userA),
@@ -433,6 +504,13 @@ Do not use outside knowledge — draw all clues from this content. Vary the subt
 
 SOURCE MATERIAL:
 ${req.content}`;
+  }
+
+  if (req.subtopics && req.subtopics.length > 0) {
+    return `Generate exactly ${count} rapid-fire Jeopardy clues about: ${req.topic}
+Focus on these specific subtopics for variety:
+${req.subtopics.map((s, i) => `${i + 1}. ${s}`).join("\n")}
+Distribute clues across these subtopics. Use them as the "subtopic" label for each clue.`;
   }
 
   return `Generate exactly ${count} rapid-fire Jeopardy clues about: ${req.topic}
